@@ -19,7 +19,7 @@ export default function AnimatedBackground({
       }`}
     >
       <div
-        className="absolute -top-10 -left-10 w-[500px] h-[500px] rounded-full blur-[120px] opacity-40"
+        className="absolute -top-10 -left-10 w-125 h-125 rounded-full blur-[120px] opacity-40"
         style={{
           background: dark
             ? "radial-gradient(circle, rgba(60,60,67,0.8) 0%, rgba(20,20,23,0.3) 60%, rgba(0,0,0,0) 80%)"
@@ -30,7 +30,7 @@ export default function AnimatedBackground({
       />
 
       <div
-        className="absolute -bottom-10 -right-10 w-[600px] h-[600px] rounded-full blur-[140px] opacity-35"
+        className="absolute -bottom-10 -right-10 w-150 h-150 rounded-full blur-[140px] opacity-35"
         style={{
           background: dark
             ? "radial-gradient(circle, rgba(50,50,55,0.7) 0%, rgba(15,15,18,0.2) 60%, rgba(0,0,0,0) 80%)"
@@ -41,7 +41,7 @@ export default function AnimatedBackground({
       />
 
       <div
-        className="absolute top-1/3 left-1/3 w-[450px] h-[450px] rounded-full blur-[100px] opacity-25"
+        className="absolute top-1/3 left-1/3 w-115 h-115 rounded-full blur-[100px] opacity-25"
         style={{
           background: dark
             ? "radial-gradient(circle, rgba(80,80,90,0.5) 0%, rgba(25,25,30,0.15) 60%, rgba(0,0,0,0) 80%)"
@@ -54,8 +54,8 @@ export default function AnimatedBackground({
       <div
         className={`absolute inset-0 ${
           dark
-            ? "bg-gradient-to-b from-black/20 via-transparent to-black"
-            : "bg-gradient-to-b from-white/10 via-transparent to-white/40"
+            ? "bg-linear-to-b from-black/20 via-transparent to-black"
+            : "bg-linear-to-b from-white/10 via-transparent to-white/40"
         }`}
       />
 

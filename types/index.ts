@@ -1,3 +1,5 @@
+export type Theme = "dark" | "light";
+
 export interface Task {
   id: string;
   title: string;
@@ -27,32 +29,23 @@ export interface Node {
   title: string;
   description: string;
   type: NodeType;
-
   x: number;
   y: number;
-
   width?: number;
   height?: number;
-
   color?: string;
-
   imageUrl?: string;
   imageDescription?: string;
-
   code?: string;
   language?: string;
-
   errorMessage?: string;
   solution?: string;
-
   linkUrl?: string;
-
   checklist?: {
     id: string;
     text: string;
     completed: boolean;
   }[];
-
   testInput?: string;
   expectedOutput?: string;
   actualOutput?: string;
@@ -69,6 +62,7 @@ export interface Topic {
   nodes: Node[];
   connections: Connection[];
   folderId?: string;
+  dueDate?: string;
 }
 
 export interface Folder {

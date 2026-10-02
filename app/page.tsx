@@ -9,9 +9,7 @@ import TaskModal from "./_components/taskModal";
 import TopicModal from "./_components/topicModal";
 import AnimatedBackground from "./_components/AnimatedBackground";
 
-import { Folder, Task, Topic } from "@/types";
-
-type Theme = "dark" | "light";
+import { Folder, Task, Theme, Topic } from "@/types";
 
 export default function Home() {
   const [activeTab, setActiveTab] = useState<string>("dashboard");
@@ -55,6 +53,7 @@ export default function Home() {
           parsedTopics.map((topic) => ({
             ...topic,
             folderId: topic.folderId || undefined,
+            dueDate: topic.dueDate || undefined,
           }))
         );
       } catch {
@@ -301,7 +300,7 @@ export default function Home() {
         }
       `}
     >
-      {isDark && <AnimatedBackground />}
+      {isDark && <AnimatedBackground theme={theme} />}
 
       <Sidebar
         activeTab={activeTab}
@@ -375,6 +374,7 @@ export default function Home() {
       {showTaskModal && (
         <TaskModal
           topics={topics}
+          theme={theme}
           onClose={() =>
             setShowTaskModal(false)
           }
@@ -388,7 +388,11 @@ export default function Home() {
           onClose={() =>
             setShowTopicModal(false)
           }
-          onCreateTopic={(name, folderId, dueDate) => {
+          onCreateTopic={(
+            name,
+            folderId,
+            dueDate
+          ) => {
             handleCreateTopic(
               name,
               folderId,

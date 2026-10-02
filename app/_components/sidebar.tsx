@@ -163,7 +163,7 @@ export default function Sidebar({
         className={`
           relative flex flex-col h-screen shrink-0
           border-r transition-all duration-300
-          ${collapsed ? "w-[76px]" : "w-[290px]"}
+          ${collapsed ? "w-19" : "w-75"}
           ${
             dark
               ? "bg-[#09090b]/95 border-zinc-800/80 text-zinc-100"
@@ -350,7 +350,7 @@ export default function Sidebar({
                             )}
 
                             <span
-                              className={`w-2.5 h-2.5 rounded-[4px] shrink-0 ${colorItem.bg}`}
+                              className={`w-2.5 h-2.5 rounded-sm shrink-0 ${colorItem.bg}`}
                             />
 
                             <span
@@ -556,7 +556,7 @@ export default function Sidebar({
 
       {/* MODAL DA PASTA */}
       {showFolderModal && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
+        <div className="fixed inset-0 z-100 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
           <div
             className={`
               w-full max-w-sm rounded-2xl border p-6 shadow-2xl

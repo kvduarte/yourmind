@@ -26,7 +26,7 @@ import {
   CalendarDays,
 } from "lucide-react";
 
-import { Task, Topic } from "@/types";
+import { Folder, Task, Topic } from "@/types";
 
 type Theme = "dark" | "light";
 
@@ -37,6 +37,7 @@ interface ExtendedTopic extends Topic {
 interface ShowcaseProps {
   tasks: Task[];
   topics: ExtendedTopic[];
+  folders: Folder[];
 
   onOpenTaskModal: () => void;
   onToggleTask: (id: string) => void;
@@ -309,7 +310,7 @@ export default function Showcase({
           group relative rounded-2xl border p-5
           transition-all duration-200
           flex flex-col justify-between
-          min-h-[250px]
+          min-h-60
           hover:-translate-y-0.5
 
           ${
@@ -432,7 +433,7 @@ export default function Showcase({
 
                     <Tag size={10} />
 
-                    <span className="truncate max-w-[120px]">
+                    <span className="truncate max-w-30">
                       {topic.name}
                     </span>
                   </button>
@@ -481,7 +482,7 @@ export default function Showcase({
             <div className="mt-3">
               <p
                 className={`
-                  text-xs leading-relaxed break-words
+                  text-xs leading-relaxed wrap-break-word
 
                   ${
                     isDark
