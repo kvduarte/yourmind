@@ -1,13 +1,28 @@
 @import "tailwindcss";
 
+/* O app troca o tema pela classe .dark / .light no <html> (ver page.tsx).
+   Sem isto, o Tailwind v4 usaria a preferência do sistema nas classes dark:. */
+@custom-variant dark (&:where(.dark, .dark *));
+
 :root {
-  --background: #121214;
-  --foreground: #ededed;
+  --background: #09090b;
+  --foreground: #f4f4f5;
+  /* cor de destaque (Configurações > Aparência). Padrão: índigo */
+  --accent: #6366f1;
+  /* multiplicador dos cantos: Configurações > Aparência > Cantos */
+  --round: 1;
 }
 
 @theme {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
+
+  /* ---------- CANTOS (todos mudam juntos com --round) ---------- */
+  --radius-md: calc(0.5rem * var(--round, 1));
+  --radius-lg: calc(0.75rem * var(--round, 1));
+  --radius-xl: calc(1rem * var(--round, 1));
+  --radius-2xl: calc(1.25rem * var(--round, 1));
+  --radius-3xl: calc(1.5rem * var(--round, 1));
 
   --animate-blob-1: floatSlow1 18s ease-in-out infinite;
   --animate-blob-2: floatSlow2 22s ease-in-out infinite;
@@ -46,4 +61,194 @@ body {
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
   overflow-x: hidden;
+}
+
+/* =========================================================
+   SYNTAX HIGHLIGHT (tema VS Code Dark+ / Light+)
+========================================================= */
+
+.code-hl-dark {
+  --hl-text: #d4d4d4;
+  --hl-keyword: #569cd6;
+  --hl-control: #c586c0;
+  --hl-string: #ce9178;
+  --hl-number: #b5cea8;
+  --hl-comment: #6a9955;
+  --hl-function: #dcdcaa;
+  --hl-type: #4ec9b0;
+  --hl-variable: #9cdcfe;
+  --hl-regexp: #d16969;
+  --hl-selector: #d7ba7d;
+}
+
+.code-hl-light {
+  --hl-text: #1f1f1f;
+  --hl-keyword: #0000ff;
+  --hl-control: #af00db;
+  --hl-string: #a31515;
+  --hl-number: #098658;
+  --hl-comment: #008000;
+  --hl-function: #795e26;
+  --hl-type: #267f99;
+  --hl-variable: #001080;
+  --hl-regexp: #811f3f;
+  --hl-selector: #800000;
+}
+
+.code-hl .hljs {
+  color: var(--hl-text);
+  background: transparent;
+}
+
+.code-hl .hljs-keyword,
+.code-hl .hljs-literal,
+.code-hl .hljs-tag,
+.code-hl .hljs-name,
+.code-hl .hljs-selector-tag,
+.code-hl .hljs-doctag {
+  color: var(--hl-keyword);
+}
+
+.code-hl .hljs-meta,
+.code-hl .hljs-meta .hljs-keyword {
+  color: var(--hl-control);
+}
+
+.code-hl .hljs-string,
+.code-hl .hljs-meta .hljs-string,
+.code-hl .hljs-template-variable {
+  color: var(--hl-string);
+}
+
+.code-hl .hljs-number,
+.code-hl .hljs-symbol,
+.code-hl .hljs-bullet {
+  color: var(--hl-number);
+}
+
+.code-hl .hljs-comment,
+.code-hl .hljs-quote {
+  color: var(--hl-comment);
+  font-style: italic;
+}
+
+.code-hl .hljs-title.function_,
+.code-hl .hljs-function .hljs-title,
+.code-hl .hljs-section {
+  color: var(--hl-function);
+}
+
+.code-hl .hljs-title.class_,
+.code-hl .hljs-title.class_.inherited__,
+.code-hl .hljs-type,
+.code-hl .hljs-built_in,
+.code-hl .hljs-class .hljs-title {
+  color: var(--hl-type);
+}
+
+.code-hl .hljs-variable,
+.code-hl .hljs-params,
+.code-hl .hljs-attr,
+.code-hl .hljs-attribute,
+.code-hl .hljs-property {
+  color: var(--hl-variable);
+}
+
+.code-hl .hljs-regexp {
+  color: var(--hl-regexp);
+}
+
+.code-hl .hljs-selector-class,
+.code-hl .hljs-selector-id,
+.code-hl .hljs-selector-attr,
+.code-hl .hljs-selector-pseudo {
+  color: var(--hl-selector);
+}
+
+.code-hl .hljs-addition {
+  color: #4ec9b0;
+}
+
+.code-hl .hljs-deletion {
+  color: #f14c4c;
+}
+
+.code-hl .hljs-emphasis {
+  font-style: italic;
+}
+
+.code-hl .hljs-strong {
+  font-weight: 700;
+}
+
+/* Seleção de texto e foco de teclado seguem a cor de destaque */
+::selection {
+  background: color-mix(in srgb, var(--accent) 35%, transparent);
+}
+
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible {
+  outline: none;
+}
+
+/* Scrollbars discretas */
+.code-hl textarea::-webkit-scrollbar,
+.thin-scroll::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.code-hl textarea::-webkit-scrollbar-thumb,
+.thin-scroll::-webkit-scrollbar-thumb {
+  background: rgba(113, 113, 122, 0.3);
+  border-radius: 999px;
+}
+
+.code-hl textarea::-webkit-scrollbar-track,
+.thin-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+/* =========================================================
+   MENUS (select) E CALENDÁRIO NATIVO SEGUEM O TEMA
+========================================================= */
+
+html.dark select,
+html.dark input[type="date"] {
+  color-scheme: dark;
+}
+
+html.light select,
+html.light input[type="date"] {
+  color-scheme: light;
+}
+
+html.dark select option {
+  background-color: #18181b;
+  color: #f4f4f5;
+}
+
+html.light select option {
+  background-color: #ffffff;
+  color: #18181b;
+}
+
+/* =========================================================
+   TEMA CLARO COM IMAGEM DE FUNDO: textos secundários mais escuros
+   (a classe has-bg-light é aplicada no page.tsx quando há imagem)
+========================================================= */
+
+.has-bg-light .text-zinc-300,
+.has-bg-light .text-zinc-400 {
+  color: #52525b; /* zinc-600 */
+}
+
+.has-bg-light .text-zinc-500 {
+  color: #3f3f46; /* zinc-700 */
 }

@@ -1,13 +1,16 @@
 "use client";
 
 import React, { useState } from "react";
-import {
-  Folder,
-  GitFork,
-  X,
-  CalendarDays,
-} from "lucide-react";
-import { Folder as FolderType } from "@/types";
+import { Folder, GitFork, CalendarDays, Link2, Code2 } from "lucide-react";
+
+import { Folder as FolderType, Theme } from "@/types";
+import { normalizeUrl } from "@/lib/link";
+import { useAccent } from "@/lib/theme";
+import { getUi } from "@/lib/ui";
+
+import ModalShell from "./ModalShell";
+
+export type TopicKind = "general" | "code";
 
 interface TopicModalProps {
   folders: FolderType[];
@@ -15,168 +18,210 @@ interface TopicModalProps {
   onCreateTopic: (
     name: string,
     folderId?: string,
-    dueDate?: string
+    dueDate?: string,
+    link?: string,
+    kind?: TopicKind
   ) => void;
+  theme?: Theme;
+  defaultFolderId?: string;
+  defaultKind?: TopicKind;
 }
+
+const KINDS: { id: TopicKind; title: string; text: string; icon: React.ReactNode }[] = [
+  {
+    id: "general",
+    title: "Normal",
+    text: "Ideias, estudos, planejamento, anotações e imagens.",
+    icon: <GitFork size={16} />,
+  },
+  {
+    id: "code",
+    title: "Programação",
+    text: "Blocos de código coloridos, ligações e IA que revisa.",
+    icon: <Code2 size={16} />,
+  },
+];
+
+const LABEL = "mb-1.5 block text-[10px] font-bold uppercase tracking-wider";
 
 export default function TopicModal({
   folders,
   onClose,
   onCreateTopic,
+  theme = "dark",
+  defaultFolderId,
+  defaultKind = "general",
 }: TopicModalProps) {
+  const dark = theme === "dark";
+  const ui = getUi(dark);
+  const accent = useAccent();
+
   const [name, setName] = useState("");
   const [folderId, setFolderId] = useState(
-    folders[0]?.id || ""
+    defaultFolderId && folders.some((f) => f.id === defaultFolderId)
+      ? defaultFolderId
+      : folders[0]?.id || ""
   );
-
   const [dueDate, setDueDate] = useState("");
+  const [link, setLink] = useState("");
+  const [kind, setKind] = useState<TopicKind>(defaultKind);
 
-  const handleSubmit = (
-    e: React.FormEvent
-  ) => {
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!name.trim()) return;
+    if (!name.trim() || !folders.length) return;
 
     onCreateTopic(
       name.trim(),
       folderId || undefined,
-      dueDate || undefined
+      dueDate || undefined,
+      normalizeUrl(link) || undefined,
+      kind
     );
 
     onClose();
   };
 
+  const fieldBase = `w-full rounded-xl border px-3.5 py-2.5 text-xs outline-none transition-colors ${ui.field}`;
+
   return (
-    <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-      <div className="bg-zinc-950 border border-zinc-800/80 rounded-2xl w-full max-w-sm p-6 shadow-2xl">
-        <div className="flex items-center justify-between mb-5">
-          <div>
-            <div className="flex items-center gap-2">
-              <GitFork
-                size={16}
-                className="text-zinc-400"
-              />
-
-              <h2 className="text-sm font-semibold text-zinc-100">
-                Novo Fluxograma
-              </h2>
-            </div>
-
-            <p className="text-[11px] text-zinc-500 mt-1">
-              Crie um fluxograma dentro de um projeto.
-            </p>
-          </div>
-
-          <button
-            onClick={onClose}
-            className="text-zinc-500 hover:text-zinc-200"
-          >
-            <X size={17} />
+    <ModalShell
+      theme={theme}
+      title="Novo fluxograma"
+      description="Crie um fluxograma dentro de um projeto."
+      icon={<GitFork size={16} />}
+      size="md"
+      onClose={onClose}
+      onSubmit={handleSubmit}
+      footer={
+        <>
+          <button type="button" onClick={onClose} className={ui.btnGhost}>
+            Cancelar
           </button>
+          <button
+            type="submit"
+            disabled={!folders.length || !name.trim()}
+            className={ui.btnPrimaryMd}
+          >
+            Criar fluxograma
+          </button>
+        </>
+      }
+    >
+      <div className="space-y-4">
+        <div>
+          <label className={`${LABEL} ${ui.subtitle}`}>Tipo de fluxograma</label>
+
+          <div className="grid grid-cols-2 gap-2">
+            {KINDS.map((item) => {
+              const selected = kind === item.id;
+
+              return (
+                <button
+                  key={item.id}
+                  type="button"
+                  onClick={() => setKind(item.id)}
+                  aria-pressed={selected}
+                  className={`rounded-xl border p-3 text-left transition-all ${
+                    selected ? (dark ? "bg-white/[0.06]" : "bg-zinc-50") : `${ui.divider} ${ui.hover}`
+                  }`}
+                  style={selected ? { borderColor: accent } : undefined}
+                >
+                  <div className={`flex items-center gap-2 text-xs font-bold ${ui.title}`}>
+                    <span style={{ color: selected ? accent : undefined }} className={selected ? "" : ui.muted}>
+                      {item.icon}
+                    </span>
+                    {item.title}
+                  </div>
+
+                  <p className={`mt-1.5 text-[10px] leading-snug ${ui.subtitle}`}>{item.text}</p>
+                </button>
+              );
+            })}
+          </div>
         </div>
 
-        <form
-          onSubmit={handleSubmit}
-          className="space-y-4"
-        >
-          <div>
-            <label className="text-[11px] text-zinc-400 block mb-1.5">
-              Nome do Fluxograma
-            </label>
+        <div>
+          <label className={`${LABEL} ${ui.subtitle}`}>Nome do fluxograma</label>
 
-            <input
-              type="text"
-              required
-              autoFocus
-              placeholder="Ex: Prova de Algoritmos"
-              value={name}
-              onChange={(e) =>
-                setName(e.target.value)
-              }
-              className="w-full bg-zinc-900 border border-zinc-800 rounded-xl px-3 py-2.5 text-xs text-zinc-100 outline-none focus:border-zinc-600"
-            />
-          </div>
+          <input
+            type="text"
+            required
+            autoFocus
+            placeholder={kind === "code" ? "Ex: API de pagamentos" : "Ex: Prova de Algoritmos"}
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            className={fieldBase}
+          />
+        </div>
 
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <div>
-            <label className="text-[11px] text-zinc-400 block mb-1.5">
-              Data da prova / trabalho
-            </label>
+            <label className={`${LABEL} ${ui.subtitle}`}>Data da prova / trabalho</label>
 
             <div className="relative">
               <CalendarDays
                 size={14}
-                className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500"
+                className={`pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 ${ui.muted}`}
               />
-
               <input
                 type="date"
                 value={dueDate}
-                onChange={(e) =>
-                  setDueDate(e.target.value)
-                }
-                className="w-full bg-zinc-900 border border-zinc-800 rounded-xl pl-9 pr-3 py-2.5 text-xs text-zinc-100 outline-none focus:border-zinc-600"
+                onChange={(e) => setDueDate(e.target.value)}
+                className={`${fieldBase} pl-9`}
               />
             </div>
           </div>
 
           <div>
-            <label className="text-[11px] text-zinc-400 block mb-1.5">
-              Projeto
+            <label className={`${LABEL} ${ui.subtitle}`}>
+              Link <span className="font-medium normal-case opacity-60">(vídeo, site, doc)</span>
             </label>
 
-            {folders.length > 0 ? (
-              <div className="relative">
-                <Folder
-                  size={14}
-                  className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500"
-                />
-
-                <select
-                  value={folderId}
-                  onChange={(e) =>
-                    setFolderId(e.target.value)
-                  }
-                  className="w-full appearance-none bg-zinc-900 border border-zinc-800 rounded-xl pl-9 pr-3 py-2.5 text-xs text-zinc-100 outline-none focus:border-zinc-600"
-                >
-                  {folders.map((folder) => (
-                    <option
-                      key={folder.id}
-                      value={folder.id}
-                    >
-                      {folder.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            ) : (
-              <div className="rounded-xl border border-dashed border-zinc-800 p-3 text-[11px] text-zinc-500">
-                Nenhum projeto criado.
-                <br />
-                Crie uma pasta primeiro no Sidebar.
-              </div>
-            )}
+            <div className="relative">
+              <Link2
+                size={14}
+                className={`pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 ${ui.muted}`}
+              />
+              <input
+                type="text"
+                value={link}
+                onChange={(e) => setLink(e.target.value)}
+                placeholder="youtube.com/watch?v=..."
+                className={`${fieldBase} pl-9`}
+              />
+            </div>
           </div>
+        </div>
 
-          <div className="flex justify-end gap-2 pt-2">
-            <button
-              type="button"
-              onClick={onClose}
-              className="px-3 py-2 text-xs text-zinc-400 hover:text-zinc-200"
-            >
-              Cancelar
-            </button>
+        <div>
+          <label className={`${LABEL} ${ui.subtitle}`}>Projeto</label>
 
-            <button
-              type="submit"
-              disabled={!folders.length}
-              className="bg-zinc-100 disabled:bg-zinc-800 disabled:text-zinc-600 text-zinc-950 font-medium px-4 py-2 rounded-xl text-xs hover:bg-zinc-200 transition-colors"
-            >
-              Criar Fluxograma
-            </button>
-          </div>
-        </form>
+          {folders.length > 0 ? (
+            <div className="relative">
+              <Folder
+                size={14}
+                className={`pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 ${ui.muted}`}
+              />
+              <select
+                value={folderId}
+                onChange={(e) => setFolderId(e.target.value)}
+                className={`${fieldBase} appearance-none pl-9`}
+              >
+                {folders.map((folder) => (
+                  <option key={folder.id} value={folder.id}>
+                    {folder.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+          ) : (
+            <div className={`rounded-xl border border-dashed p-3 text-[11px] ${ui.divider} ${ui.muted}`}>
+              Nenhum projeto criado. Crie uma pasta primeiro na tela de Fluxogramas.
+            </div>
+          )}
+        </div>
       </div>
-    </div>
+    </ModalShell>
   );
 }

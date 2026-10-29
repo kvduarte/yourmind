@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512" fill="none">
+  <!-- Fundo Preto -->
+  <rect width="512" height="512" rx="64" fill="#000000" />
+  
+  <!-- Ícone Command Redimensionado (com margem de segurança) -->
+  <g transform="translate(64, 64) scale(16)">
+    <path d="M18 3a3 3 0 0 0-3 3v12a3 3 0 0 0 3 3 3 3 0 0 0 3-3 3 3 0 0 0-3-3H6a3 3 0 0 0-3 3 3 3 0 0 0 3 3 3 3 0 0 0 3-3V6a3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3h12a3 3 0 0 0 3-3 3 3 0 0 0-3-3z" 
+          stroke="#FFFFFF" 
+          stroke-width="2" 
+          stroke-linecap="round" 
+          stroke-linejoin="round" />
+  </g>
+</svg>
