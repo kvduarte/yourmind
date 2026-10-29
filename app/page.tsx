@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-
+//a
 import Sidebar from "./_components/Sidebar";
 import Home from "./_components/Home";
 import Notes from "./_components/Notes";
