@@ -87,7 +87,7 @@ export default function NameModal({
 
       <div
         className={`mt-4 flex items-start gap-3 rounded-xl border p-3 ${
-          dark ? "border-white/10 bg-white/[0.03]" : "border-zinc-200 bg-zinc-50"
+          dark ? "border-white/10 bg-white/3" : "border-zinc-200 bg-zinc-50"
         }`}
       >
         <Palette size={16} className={`mt-0.5 shrink-0 ${ui.subtitle}`} />

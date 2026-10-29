@@ -1385,7 +1385,7 @@ export default function Flowchart({
                 bg-[radial-gradient(circle,#d4d4d8_0.8px,transparent_0.8px)]
               `
           }
-          [background-size:24px_24px]
+          bg-size-[24px_24px]
         `}
       >
         {/* =====================================================
@@ -1670,7 +1670,7 @@ export default function Flowchart({
                     isConnecting
                       ? `
                         ring-2
-                        ring-[var(--accent)]
+                        ring-(--accent)
                         ring-offset-2
                         ${
                           isDark
@@ -1683,11 +1683,11 @@ export default function Flowchart({
                   ${
                     isDark
                       ? isMain
-                        ? "bg-zinc-900/95 border-white/[0.08]"
+                        ? "bg-zinc-900/95 border-white/8"
                         : isTopic
                         ? "bg-zinc-900/90 border-white/[0.07]"
                         : isCode
-                        ? "bg-zinc-900 border-white/[0.08]"
+                        ? "bg-zinc-900 border-white/8"
                         : "bg-zinc-900/90 border-white/10 backdrop-blur-md"
                       : isMain
                       ? "bg-white border-zinc-200"
@@ -1710,7 +1710,7 @@ export default function Flowchart({
                       relative
                       w-full
                       h-full
-                      min-h-[100px]
+                      min-h-25
                       flex
                       flex-col
                       overflow-visible
@@ -1962,7 +1962,7 @@ export default function Flowchart({
                               rounded-full
                               shrink-0
                               ring-4
-                              ring-black/[0.02]
+                              ring-black/2
                             "
                             style={{
                               backgroundColor:
@@ -2041,7 +2041,7 @@ export default function Flowchart({
                                 transition-all
                                 ${
                                   isDark
-                                    ? "text-zinc-500 hover:bg-white/[0.06] hover:text-zinc-200"
+                                    ? "text-zinc-500 hover:bg-white/6 hover:text-zinc-200"
                                     : "text-zinc-400 hover:bg-zinc-100 hover:text-zinc-700"
                                 }
                               `}
@@ -2133,9 +2133,9 @@ export default function Flowchart({
                             ${
                               connectingNodeId ===
                               node.id
-                                ? "bg-[var(--accent)] text-white opacity-100"
+                                ? "bg-[(--accent)] text-white opacity-100"
                                 : isDark
-                                ? "text-zinc-500 hover:bg-white/[0.06] hover:text-zinc-100"
+                                ? "text-zinc-500 hover:bg-white/6 hover:text-zinc-100"
                                 : "text-zinc-400 hover:bg-zinc-100 hover:text-zinc-800"
                             }
                           `}
@@ -2258,13 +2258,13 @@ export default function Flowchart({
                     duration-150
                     ${
                       isConnecting
-                        ? "bg-[var(--accent)] border-[var(--accent)] text-white scale-110 opacity-100"
+                        ? "bg-(--accent) border-(--accent)] text-white scale-110 opacity-100"
                         : "opacity-0 group-hover:opacity-100 hover:scale-110"
                     }
                     ${
                       isDark
-                        ? "bg-zinc-900 border-zinc-700 text-zinc-400 hover:bg-[var(--accent)] hover:border-[var(--accent)] hover:text-white"
-                        : "bg-white border-zinc-300 text-zinc-500 hover:bg-[var(--accent)] hover:border-[var(--accent)] hover:text-white"
+                        ? "bg-zinc-900 border-zinc-700 text-zinc-400 hover:bg-(--accent) hover:border-(--accent))] hover:text-white"
+                        : "bg-white border-zinc-300 text-zinc-500 hover:bg-(--accent) hover:border-(--accent)] hover:text-white"
                     }
                   `}
                   title="Ligar a outro elemento"
@@ -2336,7 +2336,7 @@ export default function Flowchart({
                   border
                   ${
                     isDark
-                      ? "bg-white/[0.03] border-white/[0.07]"
+                      ? "bg-white/3 border-white/[0.07]"
                       : "bg-white border-zinc-200"
                   }
                 `}

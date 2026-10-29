@@ -127,7 +127,7 @@ export default function Notes({
 
         {/* FILTROS E BUSCA */}
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <div className={`inline-flex flex-wrap items-center gap-1 rounded-2xl border p-1.5 ${dark ? "bg-zinc-900/60 border-white/[0.08]" : "bg-zinc-100 border-zinc-200/80"}`}>
+          <div className={`inline-flex flex-wrap items-center gap-1 rounded-2xl border p-1.5 ${dark ? "bg-zinc-900/60 border-white/8" : "bg-zinc-100 border-zinc-200/80"}`}>
             {(
               [
                 ["all", `Todos (${pending.length})`, <StickyNote key="a" size={13} />],
@@ -145,7 +145,7 @@ export default function Notes({
                     active
                       ? "text-white shadow-sm"
                       : dark
-                      ? "text-zinc-400 hover:text-zinc-200 hover:bg-white/[0.04]"
+                      ? "text-zinc-400 hover:text-zinc-200 hover:bg-white/4"
                       : "text-zinc-600 hover:text-zinc-900 hover:bg-white/60"
                   }`}
                   style={active ? { backgroundColor: accentColor } : undefined}
@@ -168,7 +168,7 @@ export default function Notes({
               placeholder="Pesquisar anotações e lembretes..."
               className={`w-full rounded-xl border px-3.5 py-2.5 pl-10 text-xs outline-none transition-all ${
                 dark
-                  ? "border-white/[0.08] bg-zinc-900/40 text-zinc-100 placeholder:text-zinc-500 focus:border-zinc-600"
+                  ? "border-white/8 bg-zinc-900/40 text-zinc-100 placeholder:text-zinc-500 focus:border-zinc-600"
                   : "border-zinc-200 bg-white text-zinc-900 placeholder:text-zinc-400 focus:border-zinc-400 shadow-sm"
               }`}
             />
@@ -246,7 +246,7 @@ export default function Notes({
                   }`}
                 >
                   <span>{group.label}</span>
-                  <span className={`rounded px-1.5 py-0.5 text-[10px] ${dark ? "bg-white/[0.06]" : "bg-zinc-100"}`}>
+                  <span className={`rounded px-1.5 py-0.5 text-[10px] ${dark ? "bg-white/6" : "bg-zinc-100"}`}>
                     {group.list.length}
                   </span>
                 </h2>

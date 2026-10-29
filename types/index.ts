@@ -1,3 +1,5 @@
+import type { FlowKind } from "@/lib/nav";
+
 export type Theme = "dark" | "light";
 
 export interface Task {
@@ -8,6 +10,8 @@ export interface Task {
   createdAt: string;
   dueDate: string;
   imageUrl?: string;
+  image?: string;
+  link?: string;
   completed: boolean;
 }
 
@@ -63,6 +67,8 @@ export interface Topic {
   connections: Connection[];
   folderId?: string;
   dueDate?: string;
+  link?: string;
+  kind?: FlowKind;
 }
 
 export interface Folder {

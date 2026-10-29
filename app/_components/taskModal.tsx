@@ -228,7 +228,7 @@ export default function TaskModal({
           <div className="flex items-center gap-3">
             <div
               className={`flex h-10 w-10 items-center justify-center rounded-xl ${
-                dark ? "bg-white/[0.06]" : "bg-zinc-100"
+                dark ? "bg-white/6" : "bg-zinc-100"
               }`}
             >
               <StickyNote size={18} className={ui.muted} />
@@ -386,7 +386,7 @@ export default function TaskModal({
               </label>
 
               {imageUrl ? (
-                <div className="group relative overflow-hidden rounded-xl border border-white/[0.08]">
+                <div className="group relative overflow-hidden rounded-xl border border-white/8">
                   {imageError ? (
                     <div className="flex h-36 items-center justify-center px-4 text-center text-xs text-red-400">
                       Não carregou. Clique com o botão direito na imagem, escolha “Copiar endereço da imagem” e cole aqui (ou use Ctrl+V ou Enviar).

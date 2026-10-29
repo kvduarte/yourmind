@@ -54,7 +54,7 @@ export default function TaskRow({
   return (
     <div
       className={`group flex items-center gap-4 rounded-xl px-4 py-3 transition-colors ${
-        dark ? "hover:bg-white/[0.05]" : "hover:bg-zinc-50"
+        dark ? "hover:bg-white/5" : "hover:bg-zinc-50"
       }`}
     >
       <button
@@ -105,7 +105,7 @@ export default function TaskRow({
           target="_blank"
           rel="noopener noreferrer"
           title={link}
-          className={`hidden max-w-[10rem] shrink-0 items-center gap-1.5 truncate rounded-lg px-3 py-1.5 text-sm lg:flex ${chip}`}
+          className={`hidden max-w-40 shrink-0 items-center gap-1.5 truncate rounded-lg px-3 py-1.5 text-sm lg:flex ${chip}`}
         >
           <ExternalLink size={14} className="shrink-0" />
           <span className="truncate">{linkLabel(link)}</span>
@@ -116,7 +116,7 @@ export default function TaskRow({
         <button
           onClick={() => onOpenTopic(topic.id)}
           title="Abrir o fluxograma"
-          className={`hidden max-w-[10rem] shrink-0 truncate rounded-lg px-3 py-1.5 text-sm xl:block ${chip}`}
+          className={`hidden max-w-40 shrink-0 truncate rounded-lg px-3 py-1.5 text-sm xl:block ${chip}`}
         >
           {topic.name}
         </button>
@@ -143,7 +143,7 @@ export default function TaskRow({
         <button
           onClick={() => onEdit(task)}
           title="Editar"
-          className={`rounded-lg p-2.5 text-zinc-400 ${dark ? "hover:bg-white/[0.08] hover:text-white" : "hover:bg-zinc-100"}`}
+          className={`rounded-lg p-2.5 text-zinc-400 ${dark ? "hover:bg-white/8 hover:text-white" : "hover:bg-zinc-100"}`}
         >
           <Pencil size={16} />
         </button>

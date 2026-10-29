@@ -52,7 +52,7 @@ export default function Sidebar({
         collapsed ? "w-16 px-2 py-5" : "w-64 px-4 py-5"
       } ${
         dark
-          ? "border-white/[0.08] bg-zinc-950/90 text-zinc-100 backdrop-blur-xl"
+          ? "border-white/8 bg-zinc-950/90 text-zinc-100 backdrop-blur-xl"
           : "border-zinc-200/80 bg-white/90 text-zinc-900 backdrop-blur-xl"
       }`}
     >
@@ -112,7 +112,7 @@ export default function Sidebar({
                 active
                   ? "shadow-sm"
                   : dark
-                  ? "text-zinc-400 hover:bg-white/[0.05] hover:text-zinc-200"
+                  ? "text-zinc-400 hover:bg-white/5 hover:text-zinc-200"
                   : "text-zinc-600 hover:bg-zinc-100/80 hover:text-zinc-900"
               }`}
               style={
@@ -166,7 +166,7 @@ export default function Sidebar({
           collapsed ? "justify-center px-0" : ""
         } ${
           dark
-            ? "text-zinc-400 hover:bg-white/[0.05] hover:text-zinc-200"
+            ? "text-zinc-400 hover:bg-white/5 hover:text-zinc-200"
             : "text-zinc-600 hover:bg-zinc-100/80 hover:text-zinc-900"
         }`}
       >

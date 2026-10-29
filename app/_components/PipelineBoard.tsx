@@ -104,8 +104,8 @@ function ColorPicker({
           title="Usar a cor da etapa"
           className={`flex h-6 items-center rounded px-2 text-xs ${
             !value
-              ? "bg-white/[0.12] text-white"
-              : "text-zinc-500 hover:bg-white/[0.06]"
+              ? "bg-white/12 text-white"
+              : "text-zinc-500 hover:bg-white/6"
           }`}
         >
           Auto
@@ -739,7 +739,7 @@ export default function PipelineBoard({
                   setOverStage(null);
                   setOverCard(null);
                 }}
-                className={`flex max-h-full w-[300px] shrink-0 flex-col rounded-lg border transition-colors ${ui.divider}`}
+                className={`flex max-h-full w-75 shrink-0 flex-col rounded-lg border transition-colors ${ui.divider}`}
                 style={{
                   backgroundColor: isOver
                     ? `${stage.color}26`
@@ -805,7 +805,7 @@ export default function PipelineBoard({
 
                       <div
                         className={`absolute left-2 top-full z-40 mt-1 rounded-lg border p-3 shadow-2xl ${
-                          dark ? "border-white/[0.12] bg-zinc-900" : "border-zinc-200 bg-white"
+                          dark ? "border-white/12 bg-zinc-900" : "border-zinc-200 bg-white"
                         }`}
                       >
                         <ColorPicker
@@ -818,7 +818,7 @@ export default function PipelineBoard({
                 </div>
 
                 {/* Cards */}
-                <div className="thin-scroll min-h-[40px] flex-1 space-y-2 overflow-y-auto px-3 pb-2">
+                <div className="thin-scroll min-h-10 flex-1 space-y-2 overflow-y-auto px-3 pb-2">
                   {stageCards.map((card) => {
                     const priority = getPriority(card.priority);
                     const accent = card.color ?? stage.color;
@@ -860,11 +860,11 @@ export default function PipelineBoard({
                         onClick={() => setEditingId(card.id)}
                         className={`group/card cursor-pointer rounded-xl border p-3 transition-colors ${
                           dark
-                            ? "border-white/[0.08] bg-zinc-900 hover:border-white/25"
+                            ? "border-white/8 bg-zinc-900 hover:border-white/25"
                             : "border-zinc-200 bg-white hover:border-zinc-400"
                         } ${dragId === card.id ? "opacity-40" : ""} ${
                           overCard === card.id && dragId && dragId !== card.id
-                            ? "!border-t-2 !border-t-emerald-400"
+                            ? "border-t-2! border-t-emerald-400!"
                             : ""
                         }`}
                         style={{ borderLeft: `4px solid ${accent}` }}
@@ -1034,7 +1034,7 @@ export default function PipelineBoard({
 
           <button
             onClick={addStage}
-            className={`flex h-14 w-[300px] shrink-0 items-center justify-center gap-2 rounded-lg border border-dashed text-xs ${ui.divider} ${ui.muted} ${ui.hover}`}
+            className={`flex h-14 w-75 shrink-0 items-center justify-center gap-2 rounded-lg border border-dashed text-xs ${ui.divider} ${ui.muted} ${ui.hover}`}
           >
             <Plus size={14} />
             Nova etapa

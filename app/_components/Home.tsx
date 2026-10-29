@@ -710,12 +710,12 @@ export default function Home({
               <div className="flex items-center gap-2">
                 <button
                   onClick={goToday}
-                  className={`rounded-lg px-3 py-1.5 text-xs font-bold transition-all ${dark ? "bg-white/[0.08] text-zinc-200" : "bg-zinc-100 text-zinc-800"} ${hover}`}
+                  className={`rounded-lg px-3 py-1.5 text-xs font-bold transition-all ${dark ? "bg-white/8 text-zinc-200" : "bg-zinc-100 text-zinc-800"} ${hover}`}
                 >
                   Hoje
                 </button>
 
-                <div className={`flex items-center rounded-lg border p-0.5 ${dark ? "border-white/10 bg-white/[0.03]" : "border-zinc-200 bg-zinc-50"}`}>
+                <div className={`flex items-center rounded-lg border p-0.5 ${dark ? "border-white/10 bg-white/3" : "border-zinc-200 bg-zinc-50"}`}>
                   <button
                     onClick={() => shiftMonth(-1)}
                     title="Mês anterior"
@@ -755,10 +755,10 @@ export default function Home({
                         setViewMonth(new Date(date.getFullYear(), date.getMonth(), 1));
                       }
                     }}
-                    className={`flex min-h-[4rem] flex-col items-stretch rounded-xl border p-1.5 text-left transition-all lg:min-h-[5rem] ${
+                    className={`flex min-h-16 flex-col items-stretch rounded-xl border p-1.5 text-left transition-all lg:min-h-20 ${
                       selected
                         ? "shadow-xs"
-                        : `border-transparent ${dark ? "bg-white/[0.015] hover:bg-white/[0.05]" : "bg-zinc-100/40 hover:bg-zinc-100"}`
+                        : `border-transparent ${dark ? "bg-white/1.5 hover:bg-white/5" : "bg-zinc-100/40 hover:bg-zinc-100"}`
                     } ${inMonth ? "" : "opacity-30"}`}
                     style={
                       selected
@@ -881,7 +881,7 @@ export default function Home({
               {/* BUSCA RÁPIDA NO DIA */}
               {selectedEvents.length > 3 && (
                 <div className={`mb-3 flex items-center gap-2 rounded-xl border px-2.5 py-1.5 text-xs ${
-                  dark ? "border-white/10 bg-white/[0.02]" : "border-zinc-200 bg-zinc-50"
+                  dark ? "border-white/10 bg-white/2" : "border-zinc-200 bg-zinc-50"
                 }`}>
                   <Search size={13} className="text-zinc-400" />
                   <input
@@ -1172,7 +1172,7 @@ export default function Home({
               onPointerMove={handlePointerMove}
               onPointerUp={handlePointerUp}
               onPointerCancel={handlePointerUp}
-              className={`relative aspect-[16/5] w-full touch-none select-none overflow-hidden rounded-2xl border-2 border-dashed bg-zinc-950 ${
+              className={`relative aspect-16/5 w-full touch-none select-none overflow-hidden rounded-2xl border-2 border-dashed bg-zinc-950 ${
                 isDragging ? "cursor-grabbing" : "cursor-grab"
               }`}
               style={{ borderColor: withAlpha(accentColor, 0.6) }}

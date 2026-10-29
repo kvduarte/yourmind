@@ -160,7 +160,7 @@ function Toggle({
     >
       <span
         className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-all ${
-          value ? "left-[22px]" : "left-0.5"
+          value ? "left-6" : "left-0.5"
         }`}
       />
     </button>
@@ -335,7 +335,7 @@ export default function SettingsModal({
             aria-label="Seu nome"
             className={`w-56 rounded-xl border px-3.5 py-2.5 text-sm outline-none transition-colors ${
               dark
-                ? "border-white/10 bg-white/[0.03] text-zinc-100 placeholder:text-zinc-500 focus:border-white/25"
+                ? "border-white/10 bg-white/3 text-zinc-100 placeholder:text-zinc-500 focus:border-white/25"
                 : "border-zinc-200 bg-zinc-50 text-zinc-900 placeholder:text-zinc-400 focus:border-zinc-400"
             }`}
           />
@@ -925,7 +925,7 @@ export default function SettingsModal({
                 <div
                   className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${
                     dark
-                      ? "bg-white/[0.06] text-zinc-300"
+                      ? "bg-white/6 text-zinc-300"
                       : "bg-white text-zinc-600"
                   }`}
                 >
@@ -1044,13 +1044,13 @@ export default function SettingsModal({
 
   return (
     <div
-      className="fixed inset-0 z-[110] flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm"
+      className="fixed inset-0 z-110 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm"
       onMouseDown={(e) => {
         if (e.target === e.currentTarget) onClose();
       }}
     >
       <div
-        className={`flex h-[660px] max-h-[92vh] w-full max-w-4xl overflow-hidden rounded-2xl border shadow-2xl ${ui.card}`}
+        className={`flex h-165 max-h-[92vh] w-full max-w-4xl overflow-hidden rounded-2xl border shadow-2xl ${ui.card}`}
       >
         {/* MENU LATERAL */}
         <nav
@@ -1076,7 +1076,7 @@ export default function SettingsModal({
                   className={`flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-xs font-medium transition-colors ${
                     active
                       ? dark
-                        ? "bg-white/[0.08] text-white font-semibold"
+                        ? "bg-white/8 text-white font-semibold"
                         : "bg-zinc-100 text-zinc-900 font-semibold"
                       : `${ui.muted} ${ui.hover}`
                   }`}

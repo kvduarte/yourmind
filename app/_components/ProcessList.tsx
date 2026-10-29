@@ -85,7 +85,7 @@ export default function ProcessList({
                 {/* Barra de progresso proporcional das etapas */}
                 <div
                   className={`mt-6 flex h-2 overflow-hidden rounded-full ${
-                    dark ? "bg-white/[0.06]" : "bg-zinc-100"
+                    dark ? "bg-white/6" : "bg-zinc-100"
                   }`}
                 >
                   {pipeline.stages.map((stage) => {
@@ -115,7 +115,7 @@ export default function ProcessList({
                 </div>
 
                 {/* Ações e indicador de hover */}
-                <div className={`mt-6 flex items-center justify-between pt-4 border-t ${dark ? "border-white/[0.06]" : "border-zinc-200/50"}`}>
+                <div className={`mt-6 flex items-center justify-between pt-4 border-t ${dark ? "border-white/6" : "border-zinc-200/50"}`}>
                   <span className="flex items-center gap-1 text-xs font-bold transition-colors group-hover:underline" style={{ color: accentColor }}>
                     Abrir processo
                     <ArrowRight size={13} />
@@ -139,9 +139,9 @@ export default function ProcessList({
           {/* Botão de Criar Novo Processo em Card Tracejado */}
           <button
             onClick={onCreate}
-            className={`group flex min-h-[220px] flex-col items-center justify-center gap-3 rounded-2xl border-2 border-dashed p-6 text-center transition-all duration-300 hover:scale-[0.99] ${
+            className={`group flex min-h-55 flex-col items-center justify-center gap-3 rounded-2xl border-2 border-dashed p-6 text-center transition-all duration-300 hover:scale-[0.99] ${
               dark
-                ? "border-white/10 bg-white/[0.01] hover:border-white/30 hover:bg-white/[0.03]"
+                ? "border-white/10 bg-white/1 hover:border-white/30 hover:bg-white/3"
                 : "border-zinc-300 bg-zinc-50/50 hover:border-zinc-400 hover:bg-zinc-100/50"
             }`}
           >

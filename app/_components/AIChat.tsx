@@ -174,11 +174,11 @@ export default function AIChat({ topic, theme }: AIChatProps) {
   }
 
   return (
-    <div className="fixed bottom-6 left-1/2 z-50 flex w-[600px] max-w-[92vw] -translate-x-1/2 flex-col items-center gap-3 font-sans select-none">
+    <div className="fixed bottom-6 left-1/2 z-50 flex w-150 max-w-[92vw] -translate-x-1/2 flex-col items-center gap-3 font-sans select-none">
       {/* Histórico / Balão de mensagens */}
       {isOpen && (
         <div
-          className={`max-h-[320px] w-full overflow-y-auto rounded-3xl border p-4.5 shadow-2xl backdrop-blur-2xl transition-all ${
+          className={`max-h-80 w-full overflow-y-auto rounded-3xl border p-4.5 shadow-2xl backdrop-blur-2xl transition-all ${
             isDark
               ? "border-white/10 bg-zinc-950/90 text-zinc-100 shadow-black/80"
               : "border-zinc-200 bg-white/90 text-zinc-900 shadow-zinc-300/40"
