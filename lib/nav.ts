@@ -1,18 +1,27 @@
 /* Navegação do app */
 
-export type Section = "home" | "flows" | "notes" | "processes";
+export type Section =
+  | "home"
+  | "flows"
+  | "notes"
+  | "processes"
+  | "planning"
+  | "clients"
+  | "central"
+  | "personal"
+  | "ai_customizer";
 
 export type FlowKind = "general" | "code";
 
-/**
- * Todas as seções usam a mesma cor base (índigo), para o app ter uma
- * identidade única. A cor real vem de Configurações (accentColor).
- */
 export const SECTION_COLORS: Record<Section, string> = {
   home: "#6366f1",
   flows: "#6366f1",
   notes: "#6366f1",
   processes: "#6366f1",
+  planning: "#6366f1",
+  clients: "#6366f1",
+  central: "#6366f1",
+  personal: "#6366f1",
 };
 
 export const KIND_COLORS: Record<FlowKind, string> = {

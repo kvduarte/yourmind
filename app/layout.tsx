@@ -1,8 +1,11 @@
+
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
-import DailyGoalWidget from "./_components/DailyGoalWidget";
-import { ConfirmProvider } from "./_components/ConfirmDialog";
+
+import DailyGoalWidget from "./_components/widgets/DailyGoalWidget";
+import { ConfirmProvider } from "./_components/modals/ConfirmDialog";
+import Companion from "./_components/AI/companion/Companion";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -18,7 +21,7 @@ export const metadata: Metadata = {
   title: "Your Mind",
   description: "Organize ideias, código, lembretes e processos em fluxogramas.",
   icons: {
-    icon: "/logo.svg",
+    icon: "/logo2.png",
   },
 };
 
@@ -29,10 +32,15 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col relative">
-        {/* Widget da meta do dia: lê tema e cor de destaque do próprio app */}
+        {/* Widget da meta do dia */}
         <DailyGoalWidget />
 
-        <ConfirmProvider>{children}</ConfirmProvider>
+        <ConfirmProvider>
+          {children}
+        </ConfirmProvider>
+
+        {/* Companheira virtual global */}
+        <Companion />
       </body>
     </html>
   );

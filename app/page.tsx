@@ -1,25 +1,27 @@
 "use client";
 
-import { useEffect, useState } from "react";
-//a
-import Sidebar from "./_components/Sidebar";
-import Home from "./_components/Home";
-import Notes from "./_components/Notes";
-import Flows from "./_components/Flows";
-import BackBar from "./_components/BackBar";
-import Flowchart from "./_components/flowchart";
-import CodeFlow from "./_components/CodeFlow";
-import PipelineBoard from "./_components/PipelineBoard";
-import ProcessList from "./_components/ProcessList";
-import PipelineModal from "./_components/PipelineModal";
-import FolderModal from "./_components/FolderModal";
-import TaskModal from "./_components/taskModal";
-import NameModal from "./_components/NameModal";
-import { useConfirm } from "./_components/ConfirmDialog";
-import TopicModal from "./_components/topicModal";
-import AnimatedBackground from "./_components/AnimatedBackground";
-import AIChat from "./_components/AIChat";
-import SettingsModal from "./_components/SettingsModal";
+import { useEffect, useRef, useState } from "react";
+
+import Sidebar from "./_components/shared/Sidebar";
+import RightSidebar from "./_components/shared/RightSidebar";
+import Home from "./_components/home/Home";
+import Notes from "./_components/notes/Notes";
+import Flows from "./_components/flows/Flows";
+import BackBar from "./_components/shared/BackBar";
+import Flowchart from "./_components/flows/flowchart";
+import CodeFlow from "./_components/code/CodeFlow";
+import PipelineBoard from "./_components/pipeline/PipelineBoard";
+import ProcessList from "./_components/process/ProcessList";
+import Planning from "./_components/planning/Planning";
+import PipelineModal from "./_components/pipeline/PipelineModal";
+import FolderModal from "./_components/modals/FolderModal";
+import TaskModal from "./_components/modals/taskModal";
+import NameModal from "./_components/modals/NameModal";
+import { useConfirm } from "./_components/modals/ConfirmDialog";
+import TopicModal from "./_components/modals/topicModal";
+import AnimatedBackground from "./_components/background/AnimatedBackground";
+import AiAssistant from "./_components/AI/AiAssistant";
+import SettingsModal from "./_components/modals/SettingsModal";
 
 import { Folder, Task, Theme, Topic } from "@/types";
 
@@ -43,17 +45,14 @@ import {
 } from "@/lib/nav";
 import { GitFork, Code2, Workflow } from "lucide-react";
 import { DEFAULT_ACCENT } from "@/lib/theme";
+import { buildTemplate, duplicateTopic, normalizeTopic } from "@/lib/flow";
 import { textScaleStyle } from "@/lib/ui";
 
-/** Configurações + campos da imagem de fundo (cor de destaque, opacidade e intensidade) */
 type AppSettingsFull = AppSettings & {
   accentColor?: string;
   bgImageUrl?: string;
-  /** 0 a 100 */
   bgImageOpacity?: number;
-  /** 0 a 200 (100 = cor original) */
   bgImageSaturation?: number;
-  /** 0 a 100 — véu de leitura sobre a imagem */
   bgImageVeil?: number;
 };
 
@@ -65,7 +64,6 @@ type FolderModalState =
 export default function Page() {
   const confirm = useConfirm();
 
-  /* pergunta o nome uma vez; "Agora não" também conta como respondido */
   const [nameDismissed, setNameDismissed] = useState(true);
 
   useEffect(() => {
@@ -86,14 +84,12 @@ export default function Page() {
     setNameDismissed(true);
   };
 
-  /* ---------- navegação ---------- */
   const [section, setSection] = useState<Section>("home");
   const [flowKind, setFlowKind] = useState<FlowKind>("general");
   const [activeFolderId, setActiveFolderId] = useState<string | null>(null);
   const [activeTopicId, setActiveTopicId] = useState<string | null>(null);
   const [activePipelineId, setActivePipelineId] = useState<string | null>(null);
 
-  /* ---------- dados ---------- */
   const [folders, setFolders] = useState<Folder[]>([]);
   const [topics, setTopics] = useState<Topic[]>([]);
   const [tasks, setTasks] = useState<Task[]>([]);
@@ -101,24 +97,21 @@ export default function Page() {
 
   const [mounted, setMounted] = useState(false);
 
-  /* ---------- janelas ---------- */
   const [showTaskModal, setShowTaskModal] = useState(false);
   const [taskModalDate, setTaskModalDate] = useState<string | undefined>(undefined);
   const [taskModalMode, setTaskModalMode] = useState<"note" | "reminder">("reminder");
   const [showTopicModal, setShowTopicModal] = useState(false);
   const [showPipelineModal, setShowPipelineModal] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
+  const [showRightSidebar, setShowRightSidebar] = useState(false);
   const [folderModal, setFolderModal] = useState<FolderModalState>(null);
+  const [editingTopicId, setEditingTopicId] = useState<string | null>(null);
+  const [storageError, setStorageError] = useState(false);
 
   const [theme, setTheme] = useState<Theme>("light");
   const [settings, setSettings] = useState<AppSettingsFull>(DEFAULT_SETTINGS);
 
-  // imagem de fundo (arquivo original guardado no IndexedDB)
   const bgSrc = useBgImage(settings.bgImageUrl);
-
-  /* =========================================================
-     CARREGAR / SALVAR (localStorage)
-  ========================================================= */
 
   useEffect(() => {
     setMounted(true);
@@ -145,9 +138,8 @@ export default function Page() {
     setTasks(read<Task[]>("app_tasks", []));
     setPipelines(read<Pipeline[]>("app_pipelines", []));
 
-    // Fluxogramas antigos que já têm blocos de código viram "Programação".
     setTopics(
-      read<Topic[]>("app_topics", []).map((topic) => ({
+      read<Topic[]>("app_topics", []).map(normalizeTopic).map((topic) => ({
         ...topic,
         folderId: topic.folderId || undefined,
         dueDate: topic.dueDate || undefined,
@@ -159,26 +151,73 @@ export default function Page() {
   }, []);
 
   useEffect(() => {
-    if (mounted) localStorage.setItem("app_folders", JSON.stringify(folders));
+    if (!mounted) return;
+
+    try {
+      localStorage.setItem("app_folders", JSON.stringify(folders));
+      setStorageError(false);
+    } catch {
+      setStorageError(true);
+    }
   }, [folders, mounted]);
 
+  const topicsRef = useRef<Topic[]>([]);
+
+  const flushTopics = () => {
+    try {
+      localStorage.setItem("app_topics", JSON.stringify(topicsRef.current));
+      setStorageError(false);
+    } catch {
+      setStorageError(true);
+    }
+  };
+
   useEffect(() => {
-    if (mounted) localStorage.setItem("app_topics", JSON.stringify(topics));
+    const onLeave = () => {
+      if (mounted) flushTopics();
+    };
+
+    window.addEventListener("beforeunload", onLeave);
+
+    return () => window.removeEventListener("beforeunload", onLeave);
+  }, [mounted]);
+
+  useEffect(() => {
+    if (!mounted) return;
+
+    topicsRef.current = topics;
+
+    const timer = setTimeout(() => flushTopics(), 400);
+
+    return () => clearTimeout(timer);
   }, [topics, mounted]);
 
   useEffect(() => {
-    if (mounted) localStorage.setItem("app_tasks", JSON.stringify(tasks));
+    if (!mounted) return;
+
+    try {
+      localStorage.setItem("app_tasks", JSON.stringify(tasks));
+      setStorageError(false);
+    } catch {
+      setStorageError(true);
+    }
   }, [tasks, mounted]);
 
   useEffect(() => {
-    if (mounted) localStorage.setItem("app_pipelines", JSON.stringify(pipelines));
+    if (!mounted) return;
+
+    try {
+      localStorage.setItem("app_pipelines", JSON.stringify(pipelines));
+      setStorageError(false);
+    } catch {
+      setStorageError(true);
+    }
   }, [pipelines, mounted]);
 
   useEffect(() => {
     if (mounted) saveSettings(settings);
   }, [settings, mounted]);
 
-  // Tamanho da interface e cantos (Configurações > Aparência)
   useEffect(() => {
     if (!mounted) return;
 
@@ -189,7 +228,6 @@ export default function Page() {
     );
   }, [settings.uiScale, settings.radius, mounted]);
 
-  // Cor de destaque: vira a variável CSS --accent usada em todo o app
   useEffect(() => {
     if (!mounted) return;
 
@@ -207,10 +245,6 @@ export default function Page() {
     document.documentElement.classList.toggle("dark", theme === "dark");
     document.documentElement.classList.toggle("light", theme === "light");
   }, [theme, mounted]);
-
-  /* =========================================================
-     NAVEGAR (usado pelos cards da tela inicial)
-  ========================================================= */
 
   const navigate = (target: string) => {
     if (target === "notes") {
@@ -252,10 +286,6 @@ export default function Page() {
     setSection("home");
   };
 
-  /* =========================================================
-     PASTAS
-  ========================================================= */
-
   const handleSaveFolder = (name: string, color: string) => {
     if (folderModal?.mode === "edit") {
       const id = folderModal.folder.id;
@@ -296,18 +326,17 @@ export default function Page() {
     if (activeTopicId && topicIds.has(activeTopicId)) setActiveTopicId(null);
   };
 
-  /* =========================================================
-     FLUXOGRAMAS
-  ========================================================= */
-
   const handleCreateTopic = (
     name: string,
     folderId?: string,
     dueDate?: string,
     link?: string,
-    kind: FlowKind = "general"
+    kind: FlowKind = "general",
+    templateId?: string
   ) => {
     const newId = `topic-${Date.now()}`;
+    const templated =
+      kind === "general" ? buildTemplate(templateId ?? "blank", { x: 520, y: 240 }, name) : null;
 
     const newTopic: Topic = {
       id: newId,
@@ -316,23 +345,8 @@ export default function Page() {
       dueDate,
       link,
       kind,
-      // O fluxograma normal nasce com o tópico principal no centro.
-      nodes:
-        kind === "code"
-          ? []
-          : [
-              {
-                id: `node-${Date.now()}`,
-                title: name,
-                description: "Bloco Principal",
-                type: "main",
-                x: 520,
-                y: 240,
-                width: 280,
-                height: 150,
-              },
-            ],
-      connections: [],
+      nodes: templated ? templated.nodes : [],
+      connections: templated ? templated.connections : [],
     };
 
     setTopics((prev) => [...prev, newTopic]);
@@ -359,6 +373,52 @@ export default function Page() {
     setActiveTopicId(newId);
   };
 
+  const handleUpdateTopic = (
+    id: string,
+    name: string,
+    folderId?: string,
+    dueDate?: string,
+    link?: string
+  ) => {
+    setTopics((prev) =>
+      prev.map((topic) => (topic.id === id ? { ...topic, name, folderId, dueDate, link } : topic))
+    );
+
+    const marker = "Fluxograma com data definida.";
+
+    setTasks((prev) => {
+      const index = prev.findIndex((task) => task.topicId === id && task.description === marker);
+
+      if (!dueDate) return index >= 0 ? prev.filter((_, i) => i !== index) : prev;
+
+      if (index >= 0) {
+        return prev.map((task, i) => (i === index ? { ...task, title: name, dueDate, link } : task));
+      }
+
+      return [
+        {
+          id: `task-${Date.now()}-${Math.random().toString(36).substring(2, 8)}`,
+          title: name,
+          description: marker,
+          topicId: id,
+          createdAt: new Date().toISOString().split("T")[0],
+          dueDate,
+          link,
+          completed: false,
+        },
+        ...prev,
+      ];
+    });
+  };
+
+  const handleDuplicateTopic = (topic: Topic, open = false) => {
+    const copy = duplicateTopic(topic, `topic-${Date.now()}`);
+
+    setTopics((prev) => [...prev, copy]);
+
+    if (open) setActiveTopicId(copy.id);
+  };
+
   const handleDeleteTopic = async (topic: Topic) => {
     const ok = await confirm({
       title: `Excluir o fluxograma "${topic.name}"?`,
@@ -373,10 +433,6 @@ export default function Page() {
 
     if (activeTopicId === topic.id) setActiveTopicId(null);
   };
-
-  /* =========================================================
-     PROCESSOS
-  ========================================================= */
 
   const handleCreatePipeline = (name: string, templateId: string) => {
     const pipeline = createPipeline(name, templateId);
@@ -408,10 +464,6 @@ export default function Page() {
     if (activePipelineId === pipeline.id) setActivePipelineId(null);
   };
 
-  /* =========================================================
-     ANOTAÇÕES
-  ========================================================= */
-
   const handleCreateTask = (newTask: Task) => setTasks((prev) => [newTask, ...prev]);
 
   const handleToggleTask = (id: string) =>
@@ -441,10 +493,6 @@ export default function Page() {
     setTaskModalMode(mode);
     setShowTaskModal(true);
   };
-
-  /* =========================================================
-     BACKUP
-  ========================================================= */
 
   const handleExportData = () => {
     const payload = {
@@ -508,10 +556,6 @@ export default function Page() {
     setSection("home");
   };
 
-  /* =========================================================
-     TELA ATUAL
-  ========================================================= */
-
   if (!mounted) {
     return <div className="h-screen w-screen bg-black" />;
   }
@@ -548,6 +592,7 @@ export default function Page() {
           section={section}
           onSelect={goTo}
           onOpenSettings={() => setShowSettings(true)}
+          onOpenRightSidebar={() => setShowRightSidebar(true)}
           theme={theme}
         />
 
@@ -560,7 +605,9 @@ export default function Page() {
                 ? settings.textScaleFlows
                 : section === "notes"
                   ? settings.textScaleNotes
-                  : settings.textScaleProcesses
+                  : section === "planning"
+                    ? 100
+                    : settings.textScaleProcesses
           )}
         >
           {section === "home" && (
@@ -621,9 +668,10 @@ export default function Page() {
                     <Flowchart
                       key={activeTopic.id}
                       topic={activeTopic}
-                      topics={topics}
                       setTopics={setTopics}
                       theme={theme}
+                      onEditTopic={() => setEditingTopicId(activeTopic.id)}
+                      onDuplicateTopic={() => handleDuplicateTopic(activeTopic, true)}
                     />
                   )}
                 </div>
@@ -647,6 +695,8 @@ export default function Page() {
                 onOpenTopic={setActiveTopicId}
                 onCreateTopic={() => setShowTopicModal(true)}
                 onDeleteTopic={handleDeleteTopic}
+                onEditTopic={(topic) => setEditingTopicId(topic.id)}
+                onDuplicateTopic={(topic) => handleDuplicateTopic(topic)}
               />
             ))}
 
@@ -683,12 +733,14 @@ export default function Page() {
                 onDelete={handleDeletePipeline}
               />
             ))}
-        </main>
 
-        {/* O assistente aparece apenas dentro de um fluxograma aberto */}
-        {section === "flows" && activeTopic && (
-          <AIChat key={activeTopic.id} topic={activeTopic} theme={theme} />
-        )}
+          {section === "planning" && <Planning theme={theme} />}
+
+          {/* Central da Assistente Mindi (Chat + Estúdio do Boneco) */}
+          {section === "ai" && (
+            <AiAssistant theme={theme} settings={settings} />
+          )}
+        </main>
 
         {showTaskModal && (
           <TaskModal
@@ -701,15 +753,21 @@ export default function Page() {
           />
         )}
 
-        {showTopicModal && (
+        {(showTopicModal || editingTopicId) && (
           <TopicModal
+            key={editingTopicId ?? "new"}
             theme={theme}
             folders={folders}
+            topic={topics.find((item) => item.id === editingTopicId)}
             defaultFolderId={activeFolderId ?? undefined}
             defaultKind={flowKind}
-            onClose={() => setShowTopicModal(false)}
-            onCreateTopic={(name, folderId, dueDate, link, kind) => {
-              handleCreateTopic(name, folderId, dueDate, link, kind);
+            onClose={() => {
+              setShowTopicModal(false);
+              setEditingTopicId(null);
+            }}
+            onSaveTopic={handleUpdateTopic}
+            onCreateTopic={(name, folderId, dueDate, link, kind, templateId) => {
+              handleCreateTopic(name, folderId, dueDate, link, kind, templateId);
 
               setShowTopicModal(false);
             }}
@@ -746,6 +804,13 @@ export default function Page() {
           />
         )}
 
+        {storageError && (
+          <div className="fixed bottom-4 left-1/2 z-[120] max-w-md -translate-x-1/2 rounded-xl border border-red-500/30 bg-zinc-900 px-4 py-3 text-xs text-red-300 shadow-2xl">
+            O armazenamento do navegador está cheio e as últimas mudanças não foram salvas. Apague imagens, anexos ou versões
+            antigas dos fluxogramas e exporte um backup em Configurações.
+          </div>
+        )}
+
         {showSettings && (
           <SettingsModal
             theme={theme}
@@ -764,6 +829,12 @@ export default function Page() {
             onClose={() => setShowSettings(false)}
           />
         )}
+
+        <RightSidebar
+          isOpen={showRightSidebar}
+          onClose={() => setShowRightSidebar(false)}
+          theme={theme}
+        />
       </div>
     </SettingsProvider>
   );

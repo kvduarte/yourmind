@@ -2,12 +2,15 @@
 
 import React, { createContext, useContext } from "react";
 
+import { CURATED_PALETTES } from "@/lib/theme";
+
 /* =========================================================
    CONFIGURAÇÕES DO APP (salvas no navegador)
 ========================================================= */
 
 export type UiScale = "normal" | "large" | "xlarge";
 export type Radius = "sharp" | "soft" | "round";
+export type ColorStyle = "solid" | "gradient" | "preset";
 
 export interface AppSettings {
   /** Tamanho de tudo: textos, ícones, botões */
@@ -30,14 +33,20 @@ export interface AppSettings {
   textScaleFlows: number;
   textScaleNotes: number;
   textScaleProcesses: number;
+  /** lista de planejamentos, pastas e janelas de criar */
+  textScalePlanning: number;
   /** Nome usado na saudação da tela inicial */
   userName: string;
   /** Velocidade do zoom do fluxograma com a roda do mouse (%) */
   flowZoomSpeed: number;
 
-  /* ---------- imagem de fundo (Configurações > Aparência) ---------- */
+  /* ---------- imagem de fundo e cores (Configurações > Aparência) ---------- */
   /** Cor de destaque (hex) */
   accentColor?: string;
+  /** Estilo de cor: cor sólida, gradiente dinâmico ou paleta pronta */
+  colorStyle?: ColorStyle;
+  /** ID da paleta pronta selecionada */
+  colorPreset?: string;
   /** Link da imagem, ou "idb:<n>" quando a foto veio da galeria (guardada no IndexedDB) */
   bgImageUrl?: string;
   /** 0 a 100 — o quanto a imagem aparece sobre o fundo */
@@ -47,6 +56,9 @@ export interface AppSettings {
   /** 0 a 90 — véu da cor do tema sobre a imagem, para dar leitura ao texto */
   bgImageVeil?: number;
 }
+
+/** Paleta pronta padrão (precisa existir em CURATED_PALETTES) */
+const DEFAULT_PRESET = "matcha-espresso";
 
 export const DEFAULT_SETTINGS: AppSettings = {
   uiScale: "large",
@@ -60,9 +72,12 @@ export const DEFAULT_SETTINGS: AppSettings = {
   textScaleFlows: 115,
   textScaleNotes: 100,
   textScaleProcesses: 115,
+  textScalePlanning: 100,
   flowZoomSpeed: 50,
   userName: "",
-  accentColor: "#6366f1",
+  accentColor: "",
+  colorStyle: "solid",
+  colorPreset: DEFAULT_PRESET,
   bgImageUrl: "",
   bgImageOpacity: 30,
   bgImageSaturation: 100,
@@ -87,12 +102,11 @@ const STORAGE_KEY = "app_settings";
 export const TEXT_SCALE_MIN = 80;
 export const TEXT_SCALE_MAX = 200;
 
-/** Cor de destaque antiga (vinho). Quem nunca a trocou passa a usar o índigo. */
+/** Cor de destaque antiga (vinho). Quem nunca a trocou passa a usar o padrão. */
 const LEGACY_ACCENT = "#881337";
 
 function clamp(value: unknown, min: number, max: number, fallback: number) {
   const n = Number(value);
-
   return Number.isFinite(n) ? Math.min(max, Math.max(min, n)) : fallback;
 }
 
@@ -111,12 +125,22 @@ export function loadSettings(): AppSettings {
         !parsed.accentColor || parsed.accentColor.toLowerCase() === LEGACY_ACCENT
           ? DEFAULT_SETTINGS.accentColor
           : parsed.accentColor,
+      colorStyle:
+        parsed.colorStyle && ["solid", "gradient", "preset"].includes(parsed.colorStyle)
+          ? parsed.colorStyle
+          : "solid",
+      colorPreset:
+        typeof parsed.colorPreset === "string" &&
+        CURATED_PALETTES.some((p) => p.id === parsed.colorPreset)
+          ? parsed.colorPreset
+          : DEFAULT_PRESET,
       uiScale: parsed.uiScale && parsed.uiScale in UI_SCALE_PX ? parsed.uiScale : "large",
       radius: parsed.radius && parsed.radius in RADIUS_FACTOR ? parsed.radius : "soft",
       textScaleHome: clamp(parsed.textScaleHome, TEXT_SCALE_MIN, TEXT_SCALE_MAX, DEFAULT_SETTINGS.textScaleHome),
       textScaleFlows: clamp(parsed.textScaleFlows, TEXT_SCALE_MIN, TEXT_SCALE_MAX, DEFAULT_SETTINGS.textScaleFlows),
       textScaleNotes: clamp(parsed.textScaleNotes, TEXT_SCALE_MIN, TEXT_SCALE_MAX, DEFAULT_SETTINGS.textScaleNotes),
       textScaleProcesses: clamp(parsed.textScaleProcesses, TEXT_SCALE_MIN, TEXT_SCALE_MAX, DEFAULT_SETTINGS.textScaleProcesses),
+      textScalePlanning: clamp(parsed.textScalePlanning, TEXT_SCALE_MIN, TEXT_SCALE_MAX, DEFAULT_SETTINGS.textScalePlanning),
       userName: typeof parsed.userName === "string" ? parsed.userName.trim().slice(0, 40) : "",
       flowZoomSpeed: clamp(parsed.flowZoomSpeed, 10, 150, DEFAULT_SETTINGS.flowZoomSpeed),
       bgImageOpacity: clamp(parsed.bgImageOpacity, 0, 100, 30),

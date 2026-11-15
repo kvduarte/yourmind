@@ -1,0 +1,152 @@
+{
+  "mindi": {
+    "frente": {
+      "_files": [
+        "/companions/mindi/frente/parada.png",
+        "/companions/mindi/frente/parada-1.png",
+        "/companions/mindi/frente/parada-2.png",
+        "/companions/mindi/frente/piscando.png",
+        "/companions/mindi/frente/parada-3.png"
+      ]
+    },
+    "emocoes": {
+      "_files": [
+        "/companions/mindi/emocoes/feliz.png",
+        "/companions/mindi/emocoes/fofa.png",
+        "/companions/mindi/emocoes/timida.png",
+        "/companions/mindi/emocoes/pensando.png",
+        "/companions/mindi/emocoes/surpresa.png",
+        "/companions/mindi/emocoes/brava.png",
+        "/companions/mindi/emocoes/chorando.png",
+        "/companions/mindi/emocoes/amando.png",
+        "/companions/mindi/emocoes/envergonhada.png",
+        "/companions/mindi/emocoes/falando.png",
+        "/companions/mindi/emocoes/piscando.png",
+        "/companions/mindi/emocoes/abracando-joelhos.png",
+        "/companions/mindi/emocoes/espiando.png",
+        "/companions/mindi/emocoes/pequena.png",
+        "/companions/mindi/emocoes/comemorando.png",
+        "/companions/mindi/emocoes/coracoes.png",
+        "/companions/mindi/emocoes/exclamacao.png",
+        "/companions/mindi/emocoes/confusa.png",
+        "/companions/mindi/emocoes/brava-2.png",
+        "/companions/mindi/emocoes/duvida.png",
+        "/companions/mindi/emocoes/sentada-balao.png"
+      ]
+    },
+    "dormindo": {
+      "_files": [
+        "/companions/mindi/dormindo/dormindo-1.png",
+        "/companions/mindi/dormindo/dormindo-2.png"
+      ]
+    },
+    "andando": {
+      "_files": [
+        "/companions/mindi/andando/direita-1.png",
+        "/companions/mindi/andando/esquerda-1.png",
+        "/companions/mindi/andando/direita-2.png",
+        "/companions/mindi/andando/esquerda-2.png",
+        "/companions/mindi/andando/direita-3.png",
+        "/companions/mindi/andando/esquerda-3.png"
+      ]
+    },
+    "correndo": {
+      "_files": [
+        "/companions/mindi/correndo/direita-1.png",
+        "/companions/mindi/correndo/esquerda-1.png",
+        "/companions/mindi/correndo/direita-2.png",
+        "/companions/mindi/correndo/esquerda-2.png"
+      ]
+    }
+  },
+  "pets": {
+    "gato": {
+      "_files": [
+        "/companions/pets/gato/emocao-parado.png",
+        "/companions/pets/gato/emocao-feliz.png",
+        "/companions/pets/gato/emocao-bocejando.png",
+        "/companions/pets/gato/emocao-piscando-deitado.png",
+        "/companions/pets/gato/emocao-apaixonado.png",
+        "/companions/pets/gato/emocao-de-costas.png",
+        "/companions/pets/gato/emocao-duvida.png",
+        "/companions/pets/gato/emocao-espiando.png",
+        "/companions/pets/gato/sentado.png",
+        "/companions/pets/gato/sentado-lado.png",
+        "/companions/pets/gato/andando-direita-1.png",
+        "/companions/pets/gato/andando-esquerda-1.png",
+        "/companions/pets/gato/andando-direita-2.png",
+        "/companions/pets/gato/andando-esquerda-2.png",
+        "/companions/pets/gato/rastejando-direita.png",
+        "/companions/pets/gato/rastejando-esquerda.png",
+        "/companions/pets/gato/correndo-direita.png",
+        "/companions/pets/gato/correndo-esquerda.png",
+        "/companions/pets/gato/dormindo.png"
+      ]
+    },
+    "cachorro": {
+      "_files": [
+        "/companions/pets/cachorro/emocao-parado.png",
+        "/companions/pets/cachorro/emocao-feliz.png",
+        "/companions/pets/cachorro/emocao-deitado-duvida.png",
+        "/companions/pets/cachorro/emocao-animado.png",
+        "/companions/pets/cachorro/emocao-brilhando.png",
+        "/companions/pets/cachorro/emocao-deitado-coracao.png",
+        "/companions/pets/cachorro/emocao-de-costas.png",
+        "/companions/pets/cachorro/emocao-de-costas-reticencias.png",
+        "/companions/pets/cachorro/sentado.png",
+        "/companions/pets/cachorro/feliz-sentado.png",
+        "/companions/pets/cachorro/andando-direita-1.png",
+        "/companions/pets/cachorro/andando-esquerda-1.png",
+        "/companions/pets/cachorro/andando-direita-2.png",
+        "/companions/pets/cachorro/andando-esquerda-2.png",
+        "/companions/pets/cachorro/correndo-direita.png",
+        "/companions/pets/cachorro/correndo-esquerda.png",
+        "/companions/pets/cachorro/brilhando.png",
+        "/companions/pets/cachorro/dormindo.png"
+      ]
+    },
+    "coelho": {
+      "_files": [
+        "/companions/pets/coelho/emocao-apaixonado.png",
+        "/companions/pets/coelho/emocao-abracando-coracao.png",
+        "/companions/pets/coelho/emocao-deitado.png",
+        "/companions/pets/coelho/emocao-deitado-duvida.png",
+        "/companions/pets/coelho/emocao-laco-coracao.png",
+        "/companions/pets/coelho/emocao-timido.png",
+        "/companions/pets/coelho/emocao-chorando.png",
+        "/companions/pets/coelho/emocao-de-costas.png",
+        "/companions/pets/coelho/sentado.png",
+        "/companions/pets/coelho/feliz-sentado.png",
+        "/companions/pets/coelho/pulando-direita-1.png",
+        "/companions/pets/coelho/pulando-esquerda-1.png",
+        "/companions/pets/coelho/pulando-direita-2.png",
+        "/companions/pets/coelho/pulando-esquerda-2.png",
+        "/companions/pets/coelho/pulando-direita-3.png",
+        "/companions/pets/coelho/pulando-esquerda-3.png",
+        "/companions/pets/coelho/duvida.png",
+        "/companions/pets/coelho/dormindo.png"
+      ]
+    },
+    "raposa": {
+      "_files": [
+        "/companions/pets/raposa/emocao-apaixonada.png",
+        "/companions/pets/raposa/emocao-curiosa.png",
+        "/companions/pets/raposa/emocao-deitada-dormindo.png",
+        "/companions/pets/raposa/emocao-duvida.png",
+        "/companions/pets/raposa/emocao-brava.png",
+        "/companions/pets/raposa/emocao-feliz-brilho.png",
+        "/companions/pets/raposa/emocao-enrolada-dormindo.png",
+        "/companions/pets/raposa/sentada.png",
+        "/companions/pets/raposa/sentada-2.png",
+        "/companions/pets/raposa/andando-direita-1.png",
+        "/companions/pets/raposa/andando-esquerda-1.png",
+        "/companions/pets/raposa/andando-direita-2.png",
+        "/companions/pets/raposa/andando-esquerda-2.png",
+        "/companions/pets/raposa/andando-direita-3.png",
+        "/companions/pets/raposa/andando-esquerda-3.png",
+        "/companions/pets/raposa/alerta.png",
+        "/companions/pets/raposa/dormindo.png"
+      ]
+    }
+  }
+}

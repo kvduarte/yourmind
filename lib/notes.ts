@@ -1,29 +1,20 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { EnhancedNote, NoteAttachment } from "@/types";
 
 export interface Folder {
   id: string;
   name: string;
 }
 
-export interface Note {
-  id: string;
-  folderId: string;
-  title: string;
-  content: string;
-  fontSize: "sm" | "md" | "lg" | "xl";
-  createdAt: number;
-  updatedAt: number;
-}
-
 interface NotesData {
   folders: Folder[];
-  notes: Note[];
+  notes: EnhancedNote[];
 }
 
 export const DEFAULT_FOLDER_ID = "geral";
-const STORAGE_KEY = "yourmind:notebook:v1";
+const STORAGE_KEY = "yourmind:notebook:v2";
 
 const INITIAL: NotesData = {
   folders: [{ id: DEFAULT_FOLDER_ID, name: "Geral" }],
@@ -70,7 +61,6 @@ export function useNotebook() {
     }));
   }, []);
 
-  // Apagar pasta: as notas dela vão para "Geral" (nada é perdido)
   const deleteFolder = useCallback((id: string) => {
     if (id === DEFAULT_FOLDER_ID) return;
     setData((d) => ({
@@ -79,26 +69,39 @@ export function useNotebook() {
     }));
   }, []);
 
-  const saveNote = useCallback((note: Partial<Note> & { folderId: string }) => {
+  const saveNote = useCallback((note: Partial<EnhancedNote> & { folderId: string }) => {
     const now = Date.now();
-    let saved: Note | null = null;
+    let saved: EnhancedNote | null = null;
+
     setData((d) => {
       const existing = note.id ? d.notes.find((n) => n.id === note.id) : undefined;
       if (existing) {
-        saved = { ...existing, ...note, updatedAt: now } as Note;
+        saved = {
+          ...existing,
+          ...note,
+          tags: note.tags ?? existing.tags ?? [],
+          attachments: note.attachments ?? existing.attachments ?? [],
+          relatedItemIds: note.relatedItemIds ?? existing.relatedItemIds ?? [],
+          updatedAt: now,
+        } as EnhancedNote;
         return { ...d, notes: d.notes.map((n) => (n.id === existing.id ? saved! : n)) };
       }
+
       saved = {
         id: uid(),
         folderId: note.folderId,
         title: note.title ?? "",
         content: note.content ?? "",
         fontSize: note.fontSize ?? "md",
+        tags: note.tags ?? [],
+        attachments: note.attachments ?? [],
+        relatedItemIds: note.relatedItemIds ?? [],
         createdAt: now,
         updatedAt: now,
       };
       return { ...d, notes: [saved, ...d.notes] };
     });
+
     return saved;
   }, []);
 
