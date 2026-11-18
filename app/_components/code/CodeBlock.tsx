@@ -14,7 +14,7 @@ import {
 import { extractSymbols } from "@/lib/code/symbols";
 import { FileTypeIcon } from "@/lib/fileIcons";
 
-import CodeEditor from "./codenode";
+import { CodeEditor } from "./codenode";
 
 interface CodeBlockProps {
   node: Node;

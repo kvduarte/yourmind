@@ -1,7 +1,9 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { EnhancedNote, NoteAttachment } from "@/types";
+import { EnhancedNote } from "@/types";
+
+export type { EnhancedNote as Note };
 
 export interface Folder {
   id: string;

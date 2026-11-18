@@ -172,7 +172,7 @@ export default function CommandPalette({
 
       {/* Caixa da Paleta */}
       <div
-        className={`relative z-10 w-full max-w-xl rounded-[2rem] border shadow-2xl overflow-hidden transition-all ${
+        className={`relative z-10 w-full max-w-xl rounded-4xl border shadow-2xl overflow-hidden transition-all ${
           dark
             ? "border-white/15 bg-zinc-950/95 text-zinc-100 backdrop-blur-2xl"
             : "border-zinc-200 bg-white/95 text-zinc-900 shadow-zinc-300/50 backdrop-blur-2xl"

@@ -31,6 +31,7 @@ import {
 import { Theme } from "@/types";
 import {
   DropPosition,
+  OutlineNode,
   PLAN_STATUSES,
   PlanItem,
   PlanProject,
@@ -123,6 +124,75 @@ interface RowContext {
   addingChildOf: string | null;
   setAddingChildOf: (id: string | null) => void;
   actions: PlanActions;
+}
+
+function parseImportedOutline(rawContent: string): {
+  nodes: OutlineNode[];
+  replaceSameTitle?: boolean;
+} {
+  const trimmed = rawContent.trim();
+
+  if (trimmed.startsWith("{") || trimmed.startsWith("[")) {
+    const parsed = JSON.parse(trimmed);
+    const list = Array.isArray(parsed)
+      ? parsed
+      : Array.isArray(parsed?.nodes)
+      ? parsed.nodes
+      : Array.isArray(parsed?.items)
+      ? parsed.items
+      : null;
+
+    if (!list) {
+      throw new Error("JSON inválido: esperado uma lista de tópicos.");
+    }
+
+    const normalizeNodes = (arr: unknown[]): OutlineNode[] =>
+      arr
+        .filter((item): item is Record<string, unknown> => Boolean(item && typeof item === "object"))
+        .map((item) => ({
+          title: String(item.title ?? item.name ?? "Sem título"),
+          status: typeof item.status === "string" ? (item.status as OutlineNode["status"]) : undefined,
+          notes:
+            typeof item.notes === "string"
+              ? item.notes
+              : typeof item.description === "string"
+              ? item.description
+              : undefined,
+          color: typeof item.color === "string" ? item.color : undefined,
+          children: Array.isArray(item.children) ? normalizeNodes(item.children) : [],
+        }));
+
+    return {
+      nodes: normalizeNodes(list),
+      replaceSameTitle: Boolean(!Array.isArray(parsed) && parsed?.replaceSameTitle),
+    };
+  }
+
+  const roots: OutlineNode[] = [];
+  const stack: { indent: number; node: OutlineNode }[] = [];
+
+  for (const line of trimmed.split(/\r?\n/)) {
+    if (!line.trim()) continue;
+    const indent = line.match(/^\s*/)?.[0].replace(/\t/g, "  ").length ?? 0;
+    const title = line.trim().replace(/^([-*•]|\d+[.)])\s+/, "").trim();
+    if (!title) continue;
+
+    const node: OutlineNode = { title, children: [] };
+
+    while (stack.length && stack[stack.length - 1].indent >= indent) {
+      stack.pop();
+    }
+
+    if (stack.length) {
+      stack[stack.length - 1].node.children.push(node);
+    } else {
+      roots.push(node);
+    }
+
+    stack.push({ indent, node });
+  }
+
+  return { nodes: roots };
 }
 
 /* =========================================================
@@ -595,15 +665,24 @@ export default function PlanningDetail({ theme, store, project, onEditProject }:
       {importModal && (
         <PlanningImportModal
           theme={theme}
-          parentTitle={importModal.parent ? cleanTitle(importModal.parent.title) : undefined}
-          existingTitles={(activeMap.get(null) ?? []).map((item) => item.title)}
           onClose={() => setImportModal(null)}
-          onImport={(nodes, replace) =>
-            store.addTree(projectId, importModal.parent?.id ?? null, nodes, {
-              replaceSameTitle: replace,
-              historyText: "Cadastrada ao importar uma lista.",
-            })
-          }
+          onImport={(rawContent) => {
+            try {
+              const { nodes, replaceSameTitle } = parseImportedOutline(rawContent);
+              if (!nodes.length) {
+                return "Nenhum tópico válido encontrado no conteúdo enviado.";
+              }
+              store.addTree(projectId, importModal.parent?.id ?? null, nodes, {
+                replaceSameTitle,
+                historyText: "Cadastrada ao importar uma lista.",
+              });
+              return null;
+            } catch (err) {
+              return err instanceof Error
+                ? err.message
+                : "Não foi possível interpretar o formato informado.";
+            }
+          }}
         />
       )}
     </div>

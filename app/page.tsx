@@ -96,7 +96,6 @@ export default function Page() {
   const [showTopicModal, setShowTopicModal] = useState(false);
   const [showPipelineModal, setShowPipelineModal] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
-  const [showRightSidebar, setShowRightSidebar] = useState(false);
   const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
   const [folderModal, setFolderModal] = useState<FolderModalState>(null);
   const [editingTopicId, setEditingTopicId] = useState<string | null>(null);
@@ -620,7 +619,6 @@ export default function Page() {
           section={section}
           onSelect={goTo}
           onOpenSettings={() => setShowSettings(true)}
-          onOpenRightSidebar={() => setShowRightSidebar(true)}
           theme={theme}
         />
 
@@ -665,8 +663,18 @@ export default function Page() {
               pipelines={pipelines}
               theme={theme}
               settings={settings}
-              onCreateTask={handleCreateTask}
-              onSaveEditedTask={handleSaveEditedTask}
+              onCreateTask={(newTask) =>
+                handleCreateTask({
+                  ...newTask,
+                  description: newTask.description ?? "",
+                })
+              }
+              onSaveEditedTask={(updated) =>
+                handleSaveEditedTask({
+                  ...updated,
+                  description: updated.description ?? "",
+                })
+              }
               onToggleTask={handleToggleTask}
               onDeleteTask={handleDeleteTask}
               onCreateFolder={handleCreateFolderQuick}
@@ -859,7 +867,7 @@ export default function Page() {
                 colorPreset: config.colorPreset,
                 bgVariant: config.bgVariant,
                 bgPattern: config.bgPattern,
-                animatedBackground: config.animatedBackground,
+                animatedBackground: true,
               }));
               setTheme(config.theme);
 
@@ -867,7 +875,7 @@ export default function Page() {
               if (config.homeCoverImage) {
                 writeCurrentCover(config.homeCoverImage, "cover");
               }
-              
+
               try {
                 localStorage.setItem("yourmind_onboarding_done", "true");
               } catch {
@@ -879,7 +887,7 @@ export default function Page() {
         )}
 
         {storageError && (
-          <div className="fixed bottom-4 left-1/2 z-[120] max-w-md -translate-x-1/2 rounded-xl border border-red-500/30 bg-zinc-900 px-4 py-3 text-xs text-red-300 shadow-2xl">
+          <div className="fixed bottom-4 left-1/2 z-120x-w-md -translate-x-1/2 rounded-xl border border-red-500/30 bg-zinc-900 px-4 py-3 text-xs text-red-300 shadow-2xl">
             O armazenamento do navegador está cheio e as últimas mudanças não foram salvas. Apague imagens, anexos ou versões
             antigas dos fluxogramas e exporte um backup em Configurações.
           </div>
@@ -905,8 +913,6 @@ export default function Page() {
         )}
 
         <RightSidebar
-          isOpen={showRightSidebar}
-          onClose={() => setShowRightSidebar(false)}
           theme={theme}
           userName={settings.userName || "Kamylle"}
           onUpdateUserName={(name) =>

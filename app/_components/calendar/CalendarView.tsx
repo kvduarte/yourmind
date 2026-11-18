@@ -51,6 +51,14 @@ export type ConnectionModule =
   | "planning"
   | "people";
 
+export type RecurrenceFrequency =
+  | "none"
+  | "daily"
+  | "weekly"
+  | "biweekly"
+  | "monthly"
+  | "yearly";
+
 export interface CalendarConnections {
   note?: { id: string; title: string };
   flow?: { id: string; title: string };
@@ -59,9 +67,14 @@ export interface CalendarConnections {
   people?: Array<{ id: string; name: string; role?: string }>;
 }
 
-export interface RichCalendarTask extends Task {
+export interface RichCalendarTask extends Omit<Task, "description"> {
   folderId?: string;
   description?: string;
+  date?: string;
+  time?: string;
+  recurrence?: RecurrenceFrequency;
+  recurrenceEnd?: string;
+  seriesId?: string;
   link?: string;
   imageUrl?: string;
   documents?: Array<{ name: string; url: string }>;
@@ -422,7 +435,12 @@ export default function CalendarView({
     }
   > = useMemo(() => {
     const isPreset = colorStyle === "preset";
-    const [c1, c2, c3, c4, c5] = activePalette.colors;
+    const colors: string[] = [...activePalette.colors];
+    const c1 = colors[0] || primaryColor;
+    const c2 = colors[1] || c1;
+    const c3 = colors[2] || c1;
+    const c4 = colors[3] || c2;
+    const c5 = colors[4] || c3;
 
     return {
       note: {
@@ -435,30 +453,30 @@ export default function CalendarView({
       flow: {
         label: "Fluxograma",
         icon: GitFork,
-        color: isPreset ? c2 || c1 : primaryColor,
-        bg: withAlpha(isPreset ? c2 || c1 : primaryColor, 0.12),
-        border: withAlpha(isPreset ? c2 || c1 : primaryColor, 0.3),
+        color: isPreset ? c2 : primaryColor,
+        bg: withAlpha(isPreset ? c2 : primaryColor, 0.12),
+        border: withAlpha(isPreset ? c2 : primaryColor, 0.3),
       },
       process: {
         label: "Processos",
         icon: Workflow,
-        color: isPreset ? c3 || c1 : primaryColor,
-        bg: withAlpha(isPreset ? c3 || c1 : primaryColor, 0.12),
-        border: withAlpha(isPreset ? c3 || c1 : primaryColor, 0.3),
+        color: isPreset ? c3 : primaryColor,
+        bg: withAlpha(isPreset ? c3 : primaryColor, 0.12),
+        border: withAlpha(isPreset ? c3 : primaryColor, 0.3),
       },
       planning: {
         label: "Planejamento",
         icon: Target,
-        color: isPreset ? c4 || c2 || c1 : primaryColor,
-        bg: withAlpha(isPreset ? c4 || c2 || c1 : primaryColor, 0.12),
-        border: withAlpha(isPreset ? c4 || c2 || c1 : primaryColor, 0.3),
+        color: isPreset ? c4 : primaryColor,
+        bg: withAlpha(isPreset ? c4 : primaryColor, 0.12),
+        border: withAlpha(isPreset ? c4 : primaryColor, 0.3),
       },
       people: {
         label: "Pessoas",
         icon: Users,
-        color: isPreset ? c5 || c3 || c1 : primaryColor,
-        bg: withAlpha(isPreset ? c5 || c3 || c1 : primaryColor, 0.12),
-        border: withAlpha(isPreset ? c5 || c3 || c1 : primaryColor, 0.3),
+        color: isPreset ? c5 : primaryColor,
+        bg: withAlpha(isPreset ? c5 : primaryColor, 0.12),
+        border: withAlpha(isPreset ? c5 : primaryColor, 0.3),
       },
     };
   }, [activePalette, colorStyle, primaryColor]);
@@ -987,7 +1005,6 @@ export default function CalendarView({
                   {todaysTasks.map((task) => {
                     const taskExtra = task as RichCalendarTask & {
                       text?: string;
-                      time?: string;
                     };
                     return (
                       <div
@@ -1029,9 +1046,9 @@ export default function CalendarView({
                                   {task.description}
                                 </p>
                               )}
-                              {taskExtra.time && (
+                              {task.time && (
                                 <span className="inline-flex items-center gap-1 text-[10px] font-bold text-zinc-400 mt-1 bg-black/5 dark:bg-white/5 px-2 py-0.5 rounded">
-                                  <Clock size={11} /> {taskExtra.time}
+                                  <Clock size={11} /> {task.time}
                                 </span>
                               )}
                             </div>
@@ -1473,16 +1490,15 @@ export default function CalendarView({
                             {dayTasks.slice(0, holiday ? 1 : 2).map((t, idx) => {
                               const tExtra = t as RichCalendarTask & {
                                 text?: string;
-                                time?: string;
                               };
                               return (
                                 <div
                                   key={idx}
                                   className="truncate text-[10px] font-bold px-1.5 py-0.5 rounded bg-black/10 dark:bg-white/10 text-zinc-200 flex items-center gap-1"
                                 >
-                                  {tExtra.time && (
+                                  {t.time && (
                                     <span className="opacity-70 text-[9px]">
-                                      {tExtra.time}
+                                      {t.time}
                                     </span>
                                   )}
                                   <span className="truncate">
@@ -1594,7 +1610,6 @@ export default function CalendarView({
                               dayTasks.map((t, idx) => {
                                 const tExtra = t as RichCalendarTask & {
                                   text?: string;
-                                  time?: string;
                                 };
                                 return (
                                   <div
@@ -1607,9 +1622,9 @@ export default function CalendarView({
                                         : "bg-white border-zinc-200 text-zinc-800"
                                     }`}
                                   >
-                                    {tExtra.time && (
+                                    {t.time && (
                                       <span className="text-[10px] text-zinc-400 font-semibold flex items-center gap-1">
-                                        <Clock size={10} /> {tExtra.time}
+                                        <Clock size={10} /> {t.time}
                                       </span>
                                     )}
                                     <span className="truncate max-w-[200px]">

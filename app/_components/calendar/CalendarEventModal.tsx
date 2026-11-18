@@ -23,7 +23,7 @@ import {
   ChevronDown,
 } from "lucide-react";
 
-import { Folder, Task, Theme, Topic } from "@/types";
+import { Folder, Theme, Topic } from "@/types";
 import { Pipeline } from "@/lib/pipeline";
 import { isLightHex, withAlpha } from "@/lib/theme";
 import { getUi } from "@/lib/ui";
@@ -33,6 +33,8 @@ import {
   RecurrenceFrequency,
   RichCalendarTask,
 } from "./CalendarView";
+
+type TaskWithText = RichCalendarTask & { text?: string };
 
 interface CalendarEventModalProps {
   isOpen: boolean;
@@ -45,7 +47,7 @@ interface CalendarEventModalProps {
   folders: Folder[];
   topics?: Topic[];
   pipelines?: Pipeline[];
-  allTasks?: Task[];
+  allTasks?: TaskWithText[];
   onClose: () => void;
   onSave: (task: RichCalendarTask) => void;
 }
@@ -187,12 +189,11 @@ export default function CalendarEventModal({
     if (editingTask) {
       const taskExtra = editingTask as RichCalendarTask & {
         text?: string;
-        time?: string;
       };
       setTitle(editingTask.title || taskExtra.text || "");
       setDescription(editingTask.description || "");
       setDate((editingTask.date || editingTask.dueDate || initialDate).slice(0, 10));
-      setTime(taskExtra.time || "");
+      setTime(editingTask.time || "");
       setFolderId(editingTask.folderId || defaultFolderId);
       setRecurrence(editingTask.recurrence || "none");
       setRecurrenceEnd(editingTask.recurrenceEnd || "");
@@ -349,16 +350,20 @@ export default function CalendarEventModal({
     }
 
     const baseId = editingTask?.seriesId || editingTask?.id;
+    const generatedId =
+      baseId ||
+      `task_${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
 
     const payload: RichCalendarTask = {
       ...(editingTask || {
-        id: `task_${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
+        id: generatedId,
+        title: title.trim(),
+        topicId: flowId || "",
         createdAt: new Date().toISOString().split("T")[0],
         completed: false,
       }),
-      id: baseId || `task_${Date.now()}`,
+      id: generatedId,
       title: title.trim(),
-      text: title.trim(),
       description: description.trim() || undefined,
       date,
       dueDate: date,
