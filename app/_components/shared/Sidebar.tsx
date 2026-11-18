@@ -15,6 +15,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Calendar,
+  Table,
 } from "lucide-react";
 
 import { Theme } from "@/types";
@@ -45,6 +46,7 @@ const NAV_GROUPS: NavGroup[] = [
     title: "Geral",
     items: [
       { id: "home", label: "Início", hint: "Calendário e resumo", icon: LayoutDashboard },
+      { id: "calendar" as Section, label: "Agenda", hint: "Compromissos e rotina diária", icon: Calendar },
       { id: "ai" as Section, label: "Assistente Mindi", hint: "Chat, customização e boneco", icon: Command },
     ],
   },
@@ -55,12 +57,12 @@ const NAV_GROUPS: NavGroup[] = [
       { id: "notes", label: "Anotações", hint: "Lembretes e rascunhos", icon: StickyNote },
       { id: "processes", label: "Processos", hint: "Etapa por etapa", icon: Workflow },
       { id: "central", label: "Central Info", hint: "Livros, mídias e guardados", icon: Database },
+      { id: "sheets", label: "Tabelas", hint: "Dados, cálculos e listas", icon: Table },
     ],
   },
   {
     title: "Gestão",
     items: [
-      { id: "calendar" as Section, label: "Agenda", hint: "Compromissos e rotina diária", icon: Calendar },
       { id: "planning", label: "Planejamento", hint: "Evolução e prazos", icon: ListChecks },
       { id: "clients", label: "Pessoas & Contatos", hint: "Lembretes e contatos", icon: Users },
       { id: "personal", label: "Organização Pessoal", hint: "Inbox, metas e hábitos", icon: CheckSquare },
@@ -329,7 +331,7 @@ export default function Sidebar({
 
       {collapsed && tooltip && (
         <div
-          className={`fixed z-[999999] flex flex-col rounded-xl px-3 py-2 whitespace-nowrap text-left border shadow-2xl backdrop-blur-2xl pointer-events-none animate-in fade-in zoom-in-95 duration-150 ${
+          className={`fixed z-999999 flex flex-col rounded-xl px-3 py-2 whitespace-nowrap text-left border shadow-2xl backdrop-blur-2xl pointer-events-none animate-in fade-in zoom-in-95 duration-150 ${
             dark
               ? "bg-zinc-900/98 border-white/20 text-zinc-100 shadow-black/90"
               : "bg-white/98 border-zinc-200 text-zinc-900 shadow-zinc-300/80"

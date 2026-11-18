@@ -141,7 +141,7 @@ export default function TopicModal({
                   onClick={() => setKind(item.id)}
                   aria-pressed={selected}
                   className={`rounded-xl border p-3 text-left transition-all disabled:cursor-not-allowed disabled:opacity-40 ${
-                    selected ? (dark ? "bg-white/[0.06]" : "bg-zinc-50") : `${ui.divider} ${ui.hover}`
+                    selected ? (dark ? "bg-white/6" : "bg-zinc-50") : `${ui.divider} ${ui.hover}`
                   }`}
                   style={selected ? { borderColor: accent } : undefined}
                 >
@@ -191,7 +191,7 @@ export default function TopicModal({
                     aria-pressed={selected}
                     title={template.tip}
                     className={`rounded-xl border p-2.5 text-left transition-all ${
-                      selected ? (dark ? "bg-white/[0.06]" : "bg-zinc-50") : `${ui.divider} ${ui.hover}`
+                      selected ? (dark ? "bg-white/6" : "bg-zinc-50") : `${ui.divider} ${ui.hover}`
                     }`}
                     style={selected ? { borderColor: accent } : undefined}
                   >

@@ -16,6 +16,7 @@ import {
   MAX_COVERS,
   MAX_GALLERY_PHOTOS,
   MAX_LOOKS,
+  PreviewOverride,
   SavedCover,
   SavedLook,
   addCover,
@@ -52,6 +53,8 @@ interface AppearanceLibraryProps {
   bgIsUpload: boolean;
   /** endereço atual da imagem de fundo (para guardar a foto que já está aplicada) */
   bgPreviewSrc: string | null | undefined;
+  /** passar o mouse numa foto, capa ou modelo mostra a prévia na mini-tela (null = limpa) */
+  onPreview?: (override: PreviewOverride | null) => void;
 }
 
 const HOVER_BTN =
@@ -77,6 +80,7 @@ export default function AppearanceLibrary({
   hasBgImage,
   bgIsUpload,
   bgPreviewSrc,
+  onPreview,
 }: AppearanceLibraryProps) {
   const confirm = useConfirm();
   const { photos, activeId, ready } = useGalleryPhotos();
@@ -289,6 +293,8 @@ export default function AppearanceLibrary({
       bgImageOpacity: settings.bgImageOpacity ?? 30,
       bgImageSaturation: settings.bgImageSaturation ?? 100,
       bgImageVeil: settings.bgImageVeil,
+      bgVariant: settings.bgVariant ?? "lights",
+      bgPattern: settings.bgPattern ?? "none",
       image,
       cover,
     };
@@ -376,6 +382,9 @@ export default function AppearanceLibrary({
         bgImageOpacity: look.bgImageOpacity,
         bgImageSaturation: look.bgImageSaturation,
         bgImageVeil: look.bgImageVeil,
+        /* modelos antigos não guardam luzes/padrão: mantém os atuais */
+        bgVariant: look.bgVariant ?? cur.bgVariant,
+        bgPattern: look.bgPattern ?? cur.bgPattern,
         bgImageUrl: bgUrl === null ? cur.bgImageUrl : bgUrl,
       }));
 
@@ -399,6 +408,37 @@ export default function AppearanceLibrary({
       confirmLabel: "Apagar",
     });
     if (ok) removeLook(look.id);
+  };
+
+  /* ───────────── prévia ao passar o mouse ───────────── */
+
+  /** Monta o que o modelo mostraria na mini-tela (sem aplicar nada) */
+  const lookPreview = (look: SavedLook): PreviewOverride => {
+    const o: PreviewOverride = {
+      theme: look.theme,
+      accentColor: look.accentColor,
+      colorStyle: look.colorStyle,
+      colorPreset: look.colorPreset,
+      imageOpacity: look.bgImageOpacity,
+      imageSaturation: look.bgImageSaturation,
+    };
+
+    if (look.bgImageVeil !== undefined) o.imageVeil = look.bgImageVeil;
+    if (look.bgVariant !== undefined) o.bgVariant = look.bgVariant;
+    if (look.bgPattern !== undefined) o.bgPattern = look.bgPattern;
+
+    if (!look.image) o.imageUrl = "";
+    else if (look.image.kind === "url") o.imageUrl = look.image.url;
+    else if (thumbUrls[look.image.id]) o.imageUrl = thumbUrls[look.image.id];
+
+    if (look.cover === null) {
+      o.cover = null;
+    } else if (look.cover) {
+      const saved = covers.find((c) => c.id === look.cover?.id);
+      if (saved) o.cover = { src: saved.thumb, fit: saved.fit };
+    }
+
+    return o;
   };
 
   /* ───────────── interface ───────────── */
@@ -461,6 +501,10 @@ export default function AppearanceLibrary({
               return (
                 <div
                   key={photo.id}
+                  onMouseEnter={() =>
+                    onPreview?.({ imageUrl: thumbUrls[photo.id] })
+                  }
+                  onMouseLeave={() => onPreview?.(null)}
                   className="group relative aspect-video overflow-hidden rounded-lg border"
                   style={{
                     borderColor: selected
@@ -541,6 +585,11 @@ export default function AppearanceLibrary({
             disabled={busy}
             onApply={applyCover}
             onDelete={handleDeleteCover}
+            onPreview={(cover) =>
+              onPreview?.(
+                cover ? { cover: { src: cover.thumb, fit: cover.fit } } : null
+              )
+            }
           />
         )}
       </div>
@@ -550,8 +599,9 @@ export default function AppearanceLibrary({
         <div className="mb-3">
           <p className={`text-sm font-medium ${ui.title}`}>Meus Modelos</p>
           <p className={`mt-1 text-xs leading-relaxed ${ui.muted}`}>
-            Salve a aparência atual (tema, cores, paleta, foto de fundo, capa e ajustes) e volte
-            a ela com um clique. {looks.length}/{MAX_LOOKS}
+            Salve a aparência atual (tema, cores, paleta, foto de fundo, capa,
+            luzes e padrão) com o nome que quiser e volte a ela com um clique.
+            Passe o mouse num modelo para ver a prévia. {looks.length}/{MAX_LOOKS}
           </p>
         </div>
 
@@ -592,6 +642,8 @@ export default function AppearanceLibrary({
             {looks.map((look) => (
               <div
                 key={look.id}
+                onMouseEnter={() => onPreview?.(lookPreview(look))}
+                onMouseLeave={() => onPreview?.(null)}
                 className={`group relative overflow-hidden rounded-xl border transition-transform hover:-translate-y-0.5 ${ui.divider}`}
               >
                 <button

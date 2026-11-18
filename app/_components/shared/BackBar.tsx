@@ -32,7 +32,7 @@ export default function BackBar({
     <header
       className={`flex h-14 shrink-0 items-center gap-3 border-b px-4 transition-colors ${
         dark
-          ? "border-white/[0.08] bg-zinc-950/90 text-zinc-100 backdrop-blur-xl"
+          ? "border-white/8 bg-zinc-950/90 text-zinc-100 backdrop-blur-xl"
           : "border-zinc-200/80 bg-white/90 text-zinc-900 backdrop-blur-xl"
       }`}
     >
@@ -41,7 +41,7 @@ export default function BackBar({
         onClick={onBack}
         className={`flex items-center gap-2 rounded-xl px-3 py-1.5 text-xs font-bold transition-colors ${
           dark
-            ? "bg-white/[0.06] text-zinc-300 hover:bg-white/[0.1] hover:text-white"
+            ? "bg-white/6text-zinc-300 hover:bg-white/10 hover:text-white"
             : "bg-zinc-100 text-zinc-700 hover:bg-zinc-200 hover:text-zinc-900"
         }`}
       >

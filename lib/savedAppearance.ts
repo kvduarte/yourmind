@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 
-import type { ColorStyle } from "@/lib/settings";
+import type { BgPattern, BgVariant, ColorStyle } from "@/lib/settings";
 import type { Theme } from "@/types";
 
 /**
@@ -388,12 +388,37 @@ export interface SavedLook {
   bgImageOpacity: number;
   bgImageSaturation: number;
   bgImageVeil?: number;
+  /** luzes do fundo (modelos antigos não guardam: não mexem no atual) */
+  bgVariant?: BgVariant;
+  /** padrão do fundo (modelos antigos não guardam: não mexem no atual) */
+  bgPattern?: BgPattern;
   image: LookImage;
   /**
    * Capa da tela inicial: { id } = capa da biblioteca; null = sem capa;
    * undefined = modelo antigo que não guarda a capa (não mexe na atual).
    */
   cover?: { id: string } | null;
+}
+
+/**
+ * Prévia nas Configurações e no assistente inicial: o que está sob o mouse
+ * (cor, foto, capa, modelo ou formato) sobrepõe a aparência atual na mini-tela,
+ * sem aplicar de verdade.
+ */
+export interface PreviewOverride {
+  theme?: Theme;
+  accentColor?: string;
+  colorStyle?: ColorStyle;
+  colorPreset?: string;
+  bgVariant?: BgVariant;
+  bgPattern?: BgPattern;
+  /** endereço da imagem de fundo ("" = sem imagem) */
+  imageUrl?: string;
+  imageOpacity?: number;
+  imageSaturation?: number;
+  imageVeil?: number;
+  /** capa da tela inicial (null = sem capa) */
+  cover?: { src: string; fit: CoverFit } | null;
 }
 
 function readLooks(): SavedLook[] {

@@ -13,15 +13,17 @@ import CodeFlow from "./_components/code/CodeFlow";
 import PipelineBoard from "./_components/pipeline/PipelineBoard";
 import ProcessList from "./_components/process/ProcessList";
 import Planning from "./_components/planning/Planning";
+import CalendarView from "./_components/calendar/CalendarView";
 import PipelineModal from "./_components/pipeline/PipelineModal";
 import FolderModal from "./_components/modals/FolderModal";
 import TaskModal from "./_components/modals/taskModal";
-import NameModal from "./_components/modals/NameModal";
+import OnboardingWizardModal from "./_components/modals/OnboardingWizardModal";
 import { useConfirm } from "./_components/modals/ConfirmDialog";
 import TopicModal from "./_components/modals/topicModal";
 import AnimatedBackground from "./_components/background/AnimatedBackground";
 import AiAssistant from "./_components/AI/AiAssistant";
 import SettingsModal from "./_components/modals/SettingsModal";
+import CommandPalette from "./_components/shared/CommandPalette";
 
 import { Folder, Task, Theme, Topic } from "@/types";
 
@@ -37,6 +39,7 @@ import {
 
 import { Pipeline, createPipeline } from "@/lib/pipeline";
 import { useBgImage } from "@/lib/bgImage";
+import { writeCurrentCover } from "@/lib/savedAppearance";
 import {
   FlowKind,
   KIND_COLORS,
@@ -64,25 +67,15 @@ type FolderModalState =
 export default function Page() {
   const confirm = useConfirm();
 
-  const [nameDismissed, setNameDismissed] = useState(true);
+  const [onboardingDone, setOnboardingDone] = useState(true);
 
   useEffect(() => {
     try {
-      setNameDismissed(localStorage.getItem("name_prompt_done") === "1");
+      setOnboardingDone(localStorage.getItem("yourmind_onboarding_done") === "true");
     } catch {
-      setNameDismissed(true);
+      setOnboardingDone(true);
     }
   }, []);
-
-  const finishNamePrompt = () => {
-    try {
-      localStorage.setItem("name_prompt_done", "1");
-    } catch {
-      /* ignora */
-    }
-
-    setNameDismissed(true);
-  };
 
   const [section, setSection] = useState<Section>("home");
   const [flowKind, setFlowKind] = useState<FlowKind>("general");
@@ -104,6 +97,7 @@ export default function Page() {
   const [showPipelineModal, setShowPipelineModal] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [showRightSidebar, setShowRightSidebar] = useState(false);
+  const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
   const [folderModal, setFolderModal] = useState<FolderModalState>(null);
   const [editingTopicId, setEditingTopicId] = useState<string | null>(null);
   const [storageError, setStorageError] = useState(false);
@@ -112,6 +106,17 @@ export default function Page() {
   const [settings, setSettings] = useState<AppSettingsFull>(DEFAULT_SETTINGS);
 
   const bgSrc = useBgImage(settings.bgImageUrl);
+
+  useEffect(() => {
+    const handleGlobalShortcut = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
+        e.preventDefault();
+        setIsCommandPaletteOpen((prev) => !prev);
+      }
+    };
+    window.addEventListener("keydown", handleGlobalShortcut);
+    return () => window.removeEventListener("keydown", handleGlobalShortcut);
+  }, []);
 
   useEffect(() => {
     setMounted(true);
@@ -249,19 +254,36 @@ export default function Page() {
   const navigate = (target: string) => {
     if (target === "notes") {
       setSection("notes");
-
       return;
     }
 
-    if (target === "calendar" || target === "home") {
-      setSection("home");
+    if (target === "calendar") {
+      setSection("calendar");
+      return;
+    }
 
+    if (target === "planning") {
+      setSection("planning");
+      return;
+    }
+
+    if (target === "clients") {
+      setSection("clients");
+      return;
+    }
+
+    if (target === "home") {
+      setSection("home");
       return;
     }
 
     if (target === "flows") {
       setSection("flows");
+      return;
+    }
 
+    if (target === "processes") {
+      setSection("processes");
       return;
     }
 
@@ -297,6 +319,10 @@ export default function Page() {
       return;
     }
 
+    setFolders((prev) => [...prev, { id: `folder-${Date.now()}`, name, color }]);
+  };
+
+  const handleCreateFolderQuick = (name: string, color: string) => {
     setFolders((prev) => [...prev, { id: `folder-${Date.now()}`, name, color }]);
   };
 
@@ -585,7 +611,9 @@ export default function Page() {
           imageOpacity={settings.bgImageOpacity ?? 30}
           imageSaturation={settings.bgImageSaturation ?? 100}
           imageVeil={settings.bgImageVeil}
-          showLights={isDark && settings.animatedBackground}
+          variant={settings.bgVariant}
+          pattern={settings.bgPattern}
+          showLights={settings.animatedBackground}
         />
 
         <Sidebar
@@ -605,7 +633,7 @@ export default function Page() {
                 ? settings.textScaleFlows
                 : section === "notes"
                   ? settings.textScaleNotes
-                  : section === "planning"
+                  : section === "planning" || section === "calendar"
                     ? 100
                     : settings.textScaleProcesses
           )}
@@ -626,6 +654,23 @@ export default function Page() {
               onNavigate={navigate}
               onNewFlow={() => setShowTopicModal(true)}
               onNewProcess={() => setShowPipelineModal(true)}
+            />
+          )}
+
+          {section === "calendar" && (
+            <CalendarView
+              tasks={tasks}
+              folders={folders}
+              topics={topics}
+              pipelines={pipelines}
+              theme={theme}
+              settings={settings}
+              onCreateTask={handleCreateTask}
+              onSaveEditedTask={handleSaveEditedTask}
+              onToggleTask={handleToggleTask}
+              onDeleteTask={handleDeleteTask}
+              onCreateFolder={handleCreateFolderQuick}
+              onNavigate={navigate}
             />
           )}
 
@@ -736,11 +781,20 @@ export default function Page() {
 
           {section === "planning" && <Planning theme={theme} />}
 
-          {/* Central da Assistente Mindi (Chat + Estúdio do Boneco) */}
           {section === "ai" && (
             <AiAssistant theme={theme} settings={settings} />
           )}
         </main>
+
+        <CommandPalette
+          isOpen={isCommandPaletteOpen}
+          onClose={() => setIsCommandPaletteOpen(false)}
+          theme={theme}
+          accentColor={settings.accentColor || DEFAULT_ACCENT}
+          onNavigate={navigate}
+          onOpenNewTask={() => handleOpenTaskModal(undefined, "reminder")}
+          onOpenNewNote={() => navigate("notes")}
+        />
 
         {showTaskModal && (
           <TaskModal
@@ -768,7 +822,6 @@ export default function Page() {
             onSaveTopic={handleUpdateTopic}
             onCreateTopic={(name, folderId, dueDate, link, kind, templateId) => {
               handleCreateTopic(name, folderId, dueDate, link, kind, templateId);
-
               setShowTopicModal(false);
             }}
           />
@@ -793,13 +846,34 @@ export default function Page() {
           />
         )}
 
-        {mounted && !nameDismissed && !settings.userName && (
-          <NameModal
+        {mounted && !onboardingDone && (
+          <OnboardingWizardModal
+            isOpen={true}
             theme={theme}
-            onSkip={finishNamePrompt}
-            onSave={(name) => {
-              setSettings((current) => ({ ...current, userName: name }));
-              finishNamePrompt();
+            onComplete={(config) => {
+              setSettings((current) => ({
+                ...current,
+                userName: config.name,
+                accentColor: config.accentColor,
+                colorStyle: config.colorStyle,
+                colorPreset: config.colorPreset,
+                bgVariant: config.bgVariant,
+                bgPattern: config.bgPattern,
+                animatedBackground: config.animatedBackground,
+              }));
+              setTheme(config.theme);
+
+              /* a capa escolhida no assistente vira a capa da tela inicial */
+              if (config.homeCoverImage) {
+                writeCurrentCover(config.homeCoverImage, "cover");
+              }
+              
+              try {
+                localStorage.setItem("yourmind_onboarding_done", "true");
+              } catch {
+                /* ignora */
+              }
+              setOnboardingDone(true);
             }}
           />
         )}
@@ -834,6 +908,11 @@ export default function Page() {
           isOpen={showRightSidebar}
           onClose={() => setShowRightSidebar(false)}
           theme={theme}
+          userName={settings.userName || "Kamylle"}
+          onUpdateUserName={(name) =>
+            setSettings((curr) => ({ ...curr, userName: name }))
+          }
+          accentColor={settings.accentColor || DEFAULT_ACCENT}
         />
       </div>
     </SettingsProvider>

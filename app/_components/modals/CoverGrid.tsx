@@ -15,6 +15,8 @@ interface CoverGridProps {
   onApply: (cover: SavedCover) => void;
   /** sem esta função o botão de apagar não aparece */
   onDelete?: (cover: SavedCover) => void;
+  /** chamada ao passar o mouse numa capa (null ao sair): usada na pré-visualização */
+  onPreview?: (cover: SavedCover | null) => void;
   disabled?: boolean;
 }
 
@@ -26,6 +28,7 @@ export default function CoverGrid({
   dark,
   onApply,
   onDelete,
+  onPreview,
   disabled,
 }: CoverGridProps) {
   return (
@@ -36,7 +39,9 @@ export default function CoverGrid({
         return (
           <div
             key={cover.id}
-            className="group relative aspect-[16/5] overflow-hidden rounded-lg border"
+            onMouseEnter={() => onPreview?.(cover)}
+            onMouseLeave={() => onPreview?.(null)}
+            className="group relative aspect-16/5 overflow-hidden rounded-lg border"
             style={{
               borderColor: selected
                 ? accent

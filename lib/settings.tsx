@@ -12,6 +12,58 @@ export type UiScale = "normal" | "large" | "xlarge";
 export type Radius = "sharp" | "soft" | "round";
 export type ColorStyle = "solid" | "gradient" | "preset";
 
+/** Formatos de fundo disponíveis em Configurações > Aparência */
+/** Luzes do fundo (uma por vez; "none" = sem luzes) */
+export type BgVariant = "lights" | "bubbles" | "stars" | "waves" | "none";
+
+/** Padrões do fundo (um por vez; "none" = liso). Podem ficar junto com as luzes. */
+export type BgPattern = "grid" | "dots" | "lines" | "none";
+
+export const BG_VARIANTS: { id: Exclude<BgVariant, "none">; label: string }[] = [
+  { id: "lights", label: "Luzes" },
+  { id: "bubbles", label: "Bolhas" },
+  { id: "stars", label: "Estrelas" },
+  { id: "waves", label: "Ondas" },
+];
+
+export const BG_PATTERNS: { id: BgPattern; label: string }[] = [
+  { id: "grid", label: "Grade" },
+  { id: "dots", label: "Pontos" },
+  { id: "lines", label: "Linhas" },
+  { id: "none", label: "Liso" },
+];
+
+/**
+ * Lê o fundo salvo. Antes existia um único campo (bgVariant) que misturava
+ * luzes e padrões: grade/pontos/linhas/liso viram `bgPattern`.
+ */
+function migrateBackground(parsed: Partial<AppSettings>): {
+  bgVariant: BgVariant;
+  bgPattern: BgPattern;
+} {
+  const rawVariant = String(parsed.bgVariant ?? "");
+  const rawPattern = String(parsed.bgPattern ?? "");
+
+  const isLight = (v: string) =>
+    v === "none" || BG_VARIANTS.some((x) => x.id === v);
+  const isPattern = (v: string) => BG_PATTERNS.some((x) => x.id === v);
+  const oldPattern = ["grid", "dots", "lines"].includes(rawVariant);
+
+  const bgVariant: BgVariant = isLight(rawVariant)
+    ? (rawVariant as BgVariant)
+    : oldPattern || rawVariant === "solid"
+    ? "none"
+    : "lights";
+
+  const bgPattern: BgPattern = isPattern(rawPattern)
+    ? (rawPattern as BgPattern)
+    : oldPattern
+    ? (rawVariant as BgPattern)
+    : "none";
+
+  return { bgVariant, bgPattern };
+}
+
 export interface AppSettings {
   /** Tamanho de tudo: textos, ícones, botões */
   uiScale: UiScale;
@@ -55,6 +107,10 @@ export interface AppSettings {
   bgImageSaturation?: number;
   /** 0 a 90 — véu da cor do tema sobre a imagem, para dar leitura ao texto */
   bgImageVeil?: number;
+  /** Luzes do fundo: luzes, bolhas, estrelas, ondas ou nenhuma */
+  bgVariant?: BgVariant;
+  /** Padrão do fundo: grade, pontos, linhas ou liso (pode ficar junto com as luzes) */
+  bgPattern?: BgPattern;
 }
 
 /** Paleta pronta padrão (precisa existir em CURATED_PALETTES) */
@@ -81,6 +137,8 @@ export const DEFAULT_SETTINGS: AppSettings = {
   bgImageUrl: "",
   bgImageOpacity: 30,
   bgImageSaturation: 100,
+  bgVariant: "lights",
+  bgPattern: "none",
 };
 
 /** tamanho base da página (px) e multiplicador dos cantos */
@@ -143,6 +201,7 @@ export function loadSettings(): AppSettings {
       textScalePlanning: clamp(parsed.textScalePlanning, TEXT_SCALE_MIN, TEXT_SCALE_MAX, DEFAULT_SETTINGS.textScalePlanning),
       userName: typeof parsed.userName === "string" ? parsed.userName.trim().slice(0, 40) : "",
       flowZoomSpeed: clamp(parsed.flowZoomSpeed, 10, 150, DEFAULT_SETTINGS.flowZoomSpeed),
+      ...migrateBackground(parsed),
       bgImageOpacity: clamp(parsed.bgImageOpacity, 0, 100, 30),
       bgImageSaturation: clamp(parsed.bgImageSaturation, 0, 200, 100),
       bgImageVeil:

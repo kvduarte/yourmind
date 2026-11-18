@@ -39,8 +39,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
           {children}
         </ConfirmProvider>
 
-        {/* Companheira virtual global */}
-        <Companion />
+        
       </body>
     </html>
   );

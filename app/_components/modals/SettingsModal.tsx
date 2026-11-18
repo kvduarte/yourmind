@@ -14,11 +14,6 @@ import {
   Upload,
   Trash2,
   Settings,
-  CheckCircle2,
-  AlertTriangle,
-  GitFork,
-  Bot,
-  Terminal,
   Image as ImageIcon,
   Check,
   RotateCcw,
@@ -27,11 +22,12 @@ import {
 import { Theme } from "@/types";
 import {
   AppSettings,
+  BgPattern,
+  BgVariant,
   DEFAULT_SETTINGS,
   TEXT_SCALE_MAX,
   TEXT_SCALE_MIN,
 } from "@/lib/settings";
-import { highlightCode } from "@/lib/code/highlight";
 import {
   BG_IDB_PREFIX,
   deleteBgImage,
@@ -41,13 +37,20 @@ import {
 import {
   CURATED_PALETTES,
   PALETTE_GROUPS,
-  PRIMARY_BTN,
   buildAccentGradient,
   isLightHex,
   useAccent,
   withAlpha,
 } from "@/lib/theme";
-import { addGalleryPhoto, setActiveGalleryId } from "@/lib/savedAppearance";
+import {
+  COVER_CHANGED_EVENT,
+  CoverFit,
+  addGalleryPhoto,
+  readCurrentCover,
+  setActiveGalleryId,
+} from "@/lib/savedAppearance";
+import BackgroundFormatPicker from "./BackgroundFormatPicker";
+import LivePreview, { usePreviewPeek } from "./LivePreview";
 import AppearanceLibrary from "./AppearanceLibrary";
 import { useConfirm } from "./ConfirmDialog";
 
@@ -82,20 +85,40 @@ const TABS: { id: TabId; label: string; icon: React.ReactNode }[] = [
 ];
 
 // Cores rápidas: o destaque (1ª cor) de cada paleta, sem repetir
-const ACCENT_SWATCHES = Array.from(
+const ACCENT_SWATCHES: string[] = Array.from(
   new Set(CURATED_PALETTES.map((p) => p.colors[0].toLowerCase()))
 );
 
 const DEFAULT_BG_OPACITY = 30;
 const DEFAULT_BG_SATURATION = 100;
 
-const PREVIEW_CODE = `#include <stdio.h>
+// Chaves dos sliders de tamanho de texto
+type TextScaleKey =
+  | "textScaleHome"
+  | "textScaleFlows"
+  | "textScaleNotes"
+  | "textScaleProcesses"
+  | "textScalePlanning";
 
-int main(void) {
-  int total = 2 + 40;
-  printf("Resultado: %d\\n", total);
-  return 0;
-}`;
+const TEXT_SCALE_ROWS: ReadonlyArray<readonly [TextScaleKey, string, string]> = [
+  ["textScaleHome", "Tamanho: Início", "Textos da tela inicial."],
+  [
+    "textScaleFlows",
+    "Tamanho: Fluxogramas",
+    "Letras dos blocos e botões dos fluxos.",
+  ],
+  ["textScaleNotes", "Tamanho: Anotações", "Textos das notas."],
+  [
+    "textScaleProcesses",
+    "Tamanho: Processos",
+    "Letras dos cards e etapas.",
+  ],
+  [
+    "textScalePlanning",
+    "Tamanho: Planejamento",
+    "Blocos das pastas e planejamentos.",
+  ],
+];
 
 function getUi(dark: boolean) {
   return {
@@ -199,9 +222,11 @@ export default function SettingsModal({
 }: SettingsModalProps) {
   const dark = theme === "dark";
   const baseDefault = dark ? "#f4f4f5" : "#18181b";
-  const currentAccent = settings.accentColor || baseDefault;
+  const currentAccent: string = settings.accentColor || baseDefault;
   const colorStyle = settings.colorStyle || "solid";
   const colorPreset = settings.colorPreset || "matcha-espresso";
+  const bgVariant: BgVariant = settings.bgVariant ?? "lights";
+  const bgPattern: BgPattern = settings.bgPattern ?? "none";
 
   const activePalette =
     CURATED_PALETTES.find((p) => p.id === colorPreset) || CURATED_PALETTES[0];
@@ -217,10 +242,11 @@ export default function SettingsModal({
   useAccent();
   const confirm = useConfirm();
 
-  const bgOpacity = settings.bgImageOpacity ?? DEFAULT_BG_OPACITY;
-  const bgSaturation = settings.bgImageSaturation ?? DEFAULT_BG_SATURATION;
+  const bgOpacity: number = settings.bgImageOpacity ?? DEFAULT_BG_OPACITY;
+  const bgSaturation: number =
+    settings.bgImageSaturation ?? DEFAULT_BG_SATURATION;
   const defaultVeil = dark ? 0 : 40;
-  const bgVeil = settings.bgImageVeil ?? defaultVeil;
+  const bgVeil: number = settings.bgImageVeil ?? defaultVeil;
   const hasBgImage = Boolean(settings.bgImageUrl);
   const bgIsUpload = Boolean(settings.bgImageUrl?.startsWith(BG_IDB_PREFIX));
   const bgPreviewSrc = useBgImage(settings.bgImageUrl);
@@ -231,6 +257,24 @@ export default function SettingsModal({
     text: string;
   } | null>(null);
   const [bgError, setBgError] = useState<string | null>(null);
+
+  const {
+    override: previewOverride,
+    setOverride: setPreviewOverride,
+    peek,
+  } = usePreviewPeek();
+
+  const [currentCover, setCurrentCover] = useState<{
+    src: string;
+    fit: CoverFit;
+  } | null>(null);
+
+  useEffect(() => {
+    const load = () => setCurrentCover(readCurrentCover());
+    load();
+    window.addEventListener(COVER_CHANGED_EVENT, load);
+    return () => window.removeEventListener(COVER_CHANGED_EVENT, load);
+  }, []);
 
   const fileRef = useRef<HTMLInputElement>(null);
   const bgFileRef = useRef<HTMLInputElement>(null);
@@ -247,7 +291,11 @@ export default function SettingsModal({
   const update = <K extends keyof ExtendedAppSettings>(
     key: K,
     value: ExtendedAppSettings[K]
-  ) => setSettings((current) => ({ ...current, [key]: value }));
+  ) =>
+    setSettings((current: ExtendedAppSettings) => ({
+      ...current,
+      [key]: value,
+    }));
 
   const ui = {
     card: dark ? "border-white/10 bg-zinc-900" : "border-zinc-200 bg-white",
@@ -291,7 +339,6 @@ export default function SettingsModal({
       update("bgImageUrl", `${BG_IDB_PREFIX}${Date.now()}`);
       setBgError(null);
 
-      // guarda também na galeria para reaproveitar depois
       try {
         const saved = await addGalleryPhoto(
           file,
@@ -330,6 +377,20 @@ export default function SettingsModal({
       ? "Cor original"
       : "Cores vivas";
 
+  const themeOptions: { id: Theme; label: string; icon: React.ReactNode }[] = [
+    { id: "dark", label: "Escuro (Pérola)", icon: <Moon size={14} /> },
+    { id: "light", label: "Claro (Preto)", icon: <Sun size={14} /> },
+  ];
+
+  const colorStyleOptions: {
+    id: "solid" | "gradient" | "preset";
+    label: string;
+  }[] = [
+    { id: "solid", label: "Cor Sólida" },
+    { id: "gradient", label: "Gradiente" },
+    { id: "preset", label: "Paletas Prontas" },
+  ];
+
   const content: Record<TabId, React.ReactNode> = {
     appearance: (
       <>
@@ -348,7 +409,9 @@ export default function SettingsModal({
             type="text"
             value={settings.userName ?? ""}
             maxLength={40}
-            onChange={(e) => update("userName", e.target.value)}
+            onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+              update("userName", e.target.value)
+            }
             placeholder="Como quer ser chamado(a)"
             className={`w-56 rounded-xl border px-3.5 py-2.5 text-sm outline-none transition-colors ${
               dark
@@ -364,15 +427,11 @@ export default function SettingsModal({
           description="Alternar entre claro e escuro."
         >
           <div className={`flex rounded-xl p-1 ${ui.soft}`}>
-            {(
-              [
-                ["dark", "Escuro (Pérola)", <Moon key="m" size={14} />],
-                ["light", "Claro (Preto)", <Sun key="s" size={14} />],
-              ] as const
-            ).map(([id, label, icon]) => (
+            {themeOptions.map(({ id, label, icon }) => (
               <button
                 key={id}
                 type="button"
+                {...peek({ theme: id })}
                 onClick={() => {
                   setTheme(id);
                   if (
@@ -404,16 +463,11 @@ export default function SettingsModal({
           description="Escolha entre cor sólida, gradiente dinâmico ou paletas multi-cor."
         >
           <div className={`flex rounded-xl p-1 ${ui.soft}`}>
-            {(
-              [
-                ["solid", "Cor Sólida"],
-                ["gradient", "Gradiente"],
-                ["preset", "Paletas Prontas"],
-              ] as const
-            ).map(([id, label]) => (
+            {colorStyleOptions.map(({ id, label }) => (
               <button
                 key={id}
                 type="button"
+                {...peek({ colorStyle: id })}
                 onClick={() => update("colorStyle", id)}
                 className={`rounded-lg px-3 py-1.5 text-xs font-medium transition-colors cursor-pointer ${
                   colorStyle === id
@@ -461,6 +515,11 @@ export default function SettingsModal({
                           <button
                             key={preset.id}
                             type="button"
+                            {...peek({
+                              accentColor: preset.colors[0],
+                              colorStyle: "preset",
+                              colorPreset: preset.id,
+                            })}
                             onClick={() => {
                               update("colorPreset", preset.id);
                               update("accentColor", preset.colors[0]);
@@ -497,13 +556,15 @@ export default function SettingsModal({
                                 {preset.name}
                               </span>
                               <span className="flex shrink-0 items-center -space-x-1">
-                                {preset.colors.map((c, idx) => (
-                                  <span
-                                    key={idx}
-                                    className="h-3 w-3 rounded-full border border-black/20"
-                                    style={{ backgroundColor: c }}
-                                  />
-                                ))}
+                                {preset.colors.map(
+                                  (c: string, idx: number) => (
+                                    <span
+                                      key={idx}
+                                      className="h-3 w-3 rounded-full border border-black/20"
+                                      style={{ backgroundColor: c }}
+                                    />
+                                  )
+                                )}
                               </span>
                             </div>
                           </button>
@@ -531,6 +592,7 @@ export default function SettingsModal({
             <div className="flex flex-wrap items-center gap-2.5">
               <button
                 type="button"
+                {...peek({ accentColor: baseDefault })}
                 onClick={() => update("accentColor", baseDefault)}
                 title="Padrão"
                 className="flex h-8 w-8 items-center justify-center rounded-full border border-zinc-500/40 transition-transform hover:scale-110 active:scale-95 cursor-pointer"
@@ -549,13 +611,14 @@ export default function SettingsModal({
                 )}
               </button>
 
-              {ACCENT_SWATCHES.map((color) => {
+              {ACCENT_SWATCHES.map((color: string) => {
                 const selected =
                   currentAccent.toLowerCase() === color.toLowerCase();
                 return (
                   <button
                     key={color}
                     type="button"
+                    {...peek({ accentColor: color })}
                     onClick={() => update("accentColor", color)}
                     title={color}
                     className="relative flex h-8 w-8 items-center justify-center rounded-full transition-transform hover:scale-110 active:scale-95 cursor-pointer"
@@ -588,7 +651,9 @@ export default function SettingsModal({
                 <input
                   type="color"
                   value={currentAccent}
-                  onChange={(e) => update("accentColor", e.target.value)}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                    update("accentColor", e.target.value)
+                  }
                   className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
                 />
                 <span className="text-sm font-bold text-zinc-400">+</span>
@@ -628,7 +693,7 @@ export default function SettingsModal({
                 </span>
                 {colorStyle === "preset" && (
                   <span className="flex items-center -space-x-1">
-                    {activePalette.colors.map((c, idx) => (
+                    {activePalette.colors.map((c: string, idx: number) => (
                       <span
                         key={idx}
                         className="h-3.5 w-3.5 rounded-full border border-black/20"
@@ -664,28 +729,8 @@ export default function SettingsModal({
         </div>
 
         {/* Sliders de tamanho de texto por funcionalidade */}
-        {(
-          [
-            ["textScaleHome", "Tamanho: Início", "Textos da tela inicial."],
-            [
-              "textScaleFlows",
-              "Tamanho: Fluxogramas",
-              "Letras dos blocos e botões dos fluxos.",
-            ],
-            ["textScaleNotes", "Tamanho: Anotações", "Textos das notas."],
-            [
-              "textScaleProcesses",
-              "Tamanho: Processos",
-              "Letras dos cards e etapas.",
-            ],
-            [
-              "textScalePlanning",
-              "Tamanho: Planejamento",
-              "Blocos das pastas e planejamentos.",
-            ],
-          ] as const
-        ).map(([key, title, text]) => {
-          const value = settings[key] ?? DEFAULT_SETTINGS[key];
+        {TEXT_SCALE_ROWS.map(([key, title, text]) => {
+          const value: number = settings[key] ?? DEFAULT_SETTINGS[key];
           return (
             <Row key={key} dark={dark} title={title} description={text}>
               <div className="flex items-center gap-3">
@@ -695,7 +740,9 @@ export default function SettingsModal({
                   max={TEXT_SCALE_MAX}
                   step={5}
                   value={value}
-                  onChange={(e) => update(key, Number(e.target.value))}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                    update(key, Number(e.target.value))
+                  }
                   className="w-40"
                   style={{ accentColor: currentAccent }}
                 />
@@ -737,7 +784,7 @@ export default function SettingsModal({
                       : "https://exemplo.com/imagem.png"
                   }
                   value={bgIsUpload ? "" : settings.bgImageUrl || ""}
-                  onChange={(e) => {
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
                     setBgError(null);
                     update("bgImageUrl", e.target.value);
                   }}
@@ -793,7 +840,7 @@ export default function SettingsModal({
               step={1}
               value={bgOpacity}
               disabled={!hasBgImage}
-              onChange={(e) =>
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
                 update("bgImageOpacity", Number(e.target.value))
               }
               className="w-40 disabled:opacity-40"
@@ -820,7 +867,7 @@ export default function SettingsModal({
               step={1}
               value={bgSaturation}
               disabled={!hasBgImage}
-              onChange={(e) =>
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
                 update("bgImageSaturation", Number(e.target.value))
               }
               className="w-40 disabled:opacity-40"
@@ -847,7 +894,9 @@ export default function SettingsModal({
               step={1}
               value={bgVeil}
               disabled={!hasBgImage}
-              onChange={(e) => update("bgImageVeil", Number(e.target.value))}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                update("bgImageVeil", Number(e.target.value))
+              }
               className="w-40 disabled:opacity-40"
               style={{ accentColor: currentAccent }}
             />
@@ -870,17 +919,51 @@ export default function SettingsModal({
           hasBgImage={hasBgImage}
           bgIsUpload={bgIsUpload}
           bgPreviewSrc={bgPreviewSrc}
+          onPreview={setPreviewOverride}
         />
+
+        {/* FORMATO DO FUNDO: uma luz e um padrão, ao mesmo tempo */}
+        <div className={`border-b py-4 ${ui.divider}`}>
+          <div className="mb-3">
+            <p className={`text-sm font-medium ${ui.title}`}>Formato do Fundo</p>
+            <p className={`mt-1 text-xs leading-relaxed ${ui.muted}`}>
+              Escolha uma luz e um padrão: os dois podem ficar juntos. Clique
+              de novo numa luz para desligá-la.
+            </p>
+          </div>
+
+          <BackgroundFormatPicker
+            dark={dark}
+            accent={currentAccent}
+            variant={bgVariant}
+            pattern={bgPattern}
+            onChangeVariant={(value: BgVariant) =>
+              setSettings((current: ExtendedAppSettings) => ({
+                ...current,
+                bgVariant: value,
+                animatedBackground: true,
+              }))
+            }
+            onChangePattern={(value: BgPattern) =>
+              setSettings((current: ExtendedAppSettings) => ({
+                ...current,
+                bgPattern: value,
+                animatedBackground: true,
+              }))
+            }
+            onPeek={setPreviewOverride}
+          />
+        </div>
 
         <Row
           dark={dark}
-          title="Efeito de Luz em Movimento"
-          description="Efeito de luz ao fundo."
+          title="Fundo Animado"
+          description="Liga/desliga o fundo com efeitos de luz."
         >
           <Toggle
             dark={dark}
             value={settings.animatedBackground}
-            onChange={(value) => update("animatedBackground", value)}
+            onChange={(value: boolean) => update("animatedBackground", value)}
             accentColor={currentAccent}
           />
         </Row>
@@ -905,7 +988,7 @@ export default function SettingsModal({
             max={16}
             step={1}
             value={settings.editorFontSize}
-            onChange={(e) =>
+            onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
               update("editorFontSize", Number(e.target.value))
             }
             className="w-40"
@@ -920,7 +1003,7 @@ export default function SettingsModal({
           <Toggle
             dark={dark}
             value={settings.editorLineNumbers}
-            onChange={(val) => update("editorLineNumbers", val)}
+            onChange={(val: boolean) => update("editorLineNumbers", val)}
             accentColor={currentAccent}
           />
         </Row>
@@ -932,7 +1015,7 @@ export default function SettingsModal({
           <Toggle
             dark={dark}
             value={settings.autoDetectLanguage}
-            onChange={(val) => update("autoDetectLanguage", val)}
+            onChange={(val: boolean) => update("autoDetectLanguage", val)}
             accentColor={currentAccent}
           />
         </Row>
@@ -954,7 +1037,7 @@ export default function SettingsModal({
           <Toggle
             dark={dark}
             value={settings.aiChatOpenByDefault}
-            onChange={(val) => update("aiChatOpenByDefault", val)}
+            onChange={(val: boolean) => update("aiChatOpenByDefault", val)}
             accentColor={currentAccent}
           />
         </Row>
@@ -1006,6 +1089,15 @@ export default function SettingsModal({
             onChange={handleImportFile}
           />
         </Row>
+        {importMessage && (
+          <p
+            className={`pt-2 text-xs ${
+              importMessage.ok ? "text-emerald-400" : "text-red-400"
+            }`}
+          >
+            {importMessage.text}
+          </p>
+        )}
         <Row dark={dark} title="Apagar tudo" description="Zera todos os dados.">
           <button
             type="button"
@@ -1022,12 +1114,12 @@ export default function SettingsModal({
   return (
     <div
       className="fixed inset-0 z-110 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm"
-      onMouseDown={(e) => {
+      onMouseDown={(e: React.MouseEvent<HTMLDivElement>) => {
         if (e.target === e.currentTarget) onClose();
       }}
     >
       <div
-        className={`flex h-165 max-h-[92vh] w-full max-w-4xl overflow-hidden rounded-2xl border shadow-2xl ${ui.card}`}
+        className={`flex h-165 max-h-[92vh] w-full max-w-6xl overflow-hidden rounded-2xl border shadow-2xl ${ui.card}`}
       >
         <nav
           className={`hidden w-56 shrink-0 flex-col border-r p-4 sm:flex ${ui.divider}`}
@@ -1086,8 +1178,49 @@ export default function SettingsModal({
               <X size={18} />
             </button>
           </div>
-          <div className="thin-scroll flex-1 overflow-y-auto px-6 py-6">
-            {content[tab]}
+          <div className="flex min-h-0 flex-1">
+            <div className="thin-scroll min-w-0 flex-1 overflow-y-auto px-6 py-6">
+              {content[tab]}
+            </div>
+
+            {tab === "appearance" && (
+              <aside
+                className={`hidden w-88 shrink-0 flex-col gap-3 overflow-y-auto border-l p-5 lg:flex ${ui.divider}`}
+              >
+                <div>
+                  <p className={`text-sm font-medium ${ui.title}`}>
+                    Pré-visualização
+                  </p>
+                  <p className={`mt-1 text-xs leading-relaxed ${ui.muted}`}>
+                    Passe o mouse sobre cores, fotos, capas, modelos ou
+                    formatos para ver como a tela fica antes de aplicar.
+                  </p>
+                </div>
+
+                <LivePreview
+                  override={previewOverride}
+                  base={{
+                    theme,
+                    accent: currentAccent,
+                    colorStyle,
+                    colorPreset,
+                    variant: bgVariant,
+                    pattern: bgPattern,
+                    imageUrl: bgPreviewSrc || undefined,
+                    imageOpacity: bgOpacity,
+                    imageSaturation: bgSaturation,
+                    imageVeil: settings.bgImageVeil,
+                    cover: currentCover,
+                  }}
+                />
+
+                <p className={`text-xs ${ui.muted}`}>
+                  {previewOverride
+                    ? "Prévia: clique para aplicar."
+                    : "Aparência atual."}
+                </p>
+              </aside>
+            )}
           </div>
         </div>
       </div>

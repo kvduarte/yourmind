@@ -1,265 +1,398 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useRef } from "react";
 import {
-  X,
+  ChevronLeft,
+  ChevronRight,
   User,
-  Mail,
-  Lock,
+  BookOpen,
+  Keyboard,
   Camera,
-  LogOut,
-  Shield,
   Check,
+  Command,
+  Calendar,
+  StickyNote,
+  GitFork,
+  ShieldCheck,
+  Sparkles,
 } from "lucide-react";
-
 import { Theme } from "@/types";
-import { useAccent, withAlpha } from "@/lib/theme";
+import { withAlpha, DEFAULT_ACCENT } from "@/lib/theme";
 
 interface RightSidebarProps {
-  isOpen: boolean;
-  onClose: () => void;
   theme: Theme;
+  userName?: string;
+  userAvatar?: string;
+  onUpdateUserName?: (name: string) => void;
+  onUpdateUserAvatar?: (avatarUrl: string) => void;
+  accentColor?: string;
 }
 
+type RightTab = "profile" | "tutorial" | "keybinds";
+
 export default function RightSidebar({
-  isOpen,
-  onClose,
   theme,
+  userName = "Kamylle",
+  userAvatar,
+  onUpdateUserName,
+  onUpdateUserAvatar,
+  accentColor = DEFAULT_ACCENT,
 }: RightSidebarProps) {
-  const [activeTab, setActiveTab] = useState<"profile" | "security">("profile");
-  const [name, setName] = useState("Kamylle Duarte");
-  const [email, setEmail] = useState("kamylle@exemplo.com");
-  const [currentPassword, setCurrentPassword] = useState("");
-  const [newPassword, setNewPassword] = useState("");
-  const [saved, setSaved] = useState(false);
-
   const dark = theme === "dark";
-  const accentColor = useAccent();
+  const [expanded, setExpanded] = useState(false);
+  const [activeTab, setActiveTab] = useState<RightTab>("profile");
+  const [editingName, setEditingName] = useState(userName);
+  const [isEditingName, setIsEditingName] = useState(false);
 
-  if (!isOpen) return null;
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const handleSave = (e: React.FormEvent) => {
-    e.preventDefault();
-    setSaved(true);
-    setTimeout(() => setSaved(false), 2000);
+  const handleSelectTab = (tab: RightTab) => {
+    if (expanded && activeTab === tab) {
+      setExpanded(false);
+    } else {
+      setActiveTab(tab);
+      setExpanded(true);
+    }
   };
 
-  return (
-    <div className="fixed inset-0 z-50 flex justify-end select-none animate-in fade-in duration-200">
-      {/* Overlay escuro de fundo */}
-      <div
-        className="absolute inset-0 bg-black/50 backdrop-blur-sm transition-opacity"
-        onClick={onClose}
-      />
+  const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !onUpdateUserAvatar) return;
 
-      {/* Sidebar 2 (Direita) - Exclusiva para Conta e Perfil */}
-      <aside
-        className={`relative z-10 flex h-full w-full max-w-md flex-col border-l shadow-2xl transition-transform duration-300 ease-in-out ${
+    const reader = new FileReader();
+    reader.onload = () => {
+      if (typeof reader.result === "string") {
+        onUpdateUserAvatar(reader.result);
+      }
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleSaveName = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (onUpdateUserName && editingName.trim()) {
+      onUpdateUserName(editingName.trim());
+    }
+    setIsEditingName(false);
+  };
+
+  const navItems: Array<{
+    id: RightTab;
+    label: string;
+    icon: React.ElementType;
+  }> = [
+    { id: "profile", label: "Conta & Perfil", icon: User },
+    { id: "tutorial", label: "Tutorial do App", icon: BookOpen },
+    { id: "keybinds", label: "Teclas & Atalhos", icon: Keyboard },
+  ];
+
+  return (
+    <aside
+      className={`relative z-30 flex h-full shrink-0 flex-col border-l transition-all duration-300 select-none ${
+        expanded ? "w-76" : "w-[72px]"
+      } ${
+        dark
+          ? "border-white/8 bg-[#09090b]/95 text-zinc-100 backdrop-blur-2xl"
+          : "border-zinc-200/80 bg-white/95 text-zinc-900 backdrop-blur-2xl"
+      }`}
+    >
+      {/* BOTÃO REDONDO NA BORDA ESQUERDA (ESPELHADO COM A SIDEBAR ESQUERDA) */}
+      <button
+        onClick={() => setExpanded((prev) => !prev)}
+        title={expanded ? "Recolher barra" : "Expandir barra"}
+        className={`absolute -left-3.5 top-12 z-40 flex h-7 w-7 items-center justify-center rounded-full border shadow-md transition-transform hover:scale-110 cursor-pointer ${
           dark
-            ? "border-white/10 bg-zinc-950 text-zinc-100"
-            : "border-zinc-200 bg-white text-zinc-900"
+            ? "border-white/12 bg-zinc-900 text-zinc-300 hover:text-white"
+            : "border-zinc-200 bg-white text-zinc-600 hover:text-zinc-900"
         }`}
       >
-        {/* Header */}
-        <div className={`flex items-center justify-between border-b px-6 py-5 ${dark ? "border-white/8" : "border-zinc-200/80"}`}>
-          <div className="flex items-center gap-3">
-            <div
-              className="flex h-9 w-9 items-center justify-center rounded-xl border text-xs font-bold shadow-sm"
-              style={{
-                backgroundColor: withAlpha(accentColor, 0.15),
-                borderColor: withAlpha(accentColor, 0.3),
-                color: accentColor,
-              }}
-            >
-              KD
-            </div>
-            <div>
-              <h2 className="text-sm font-bold tracking-tight">Perfil & Conta</h2>
-              <p className="text-[11px] text-zinc-400">Informações pessoais e segurança</p>
-            </div>
-          </div>
+        {expanded ? <ChevronRight size={14} /> : <ChevronLeft size={14} />}
+      </button>
 
+      {/* TOPO: FOTO DE PERFIL / AVATAR DA PESSOA */}
+      <div className="flex flex-col items-center pt-5 pb-4 px-3">
+        <div className="relative group">
           <button
-            onClick={onClose}
-            aria-label="Fechar painel"
-            className={`flex h-8 w-8 items-center justify-center rounded-xl border transition-all duration-200 hover:scale-105 cursor-pointer ${
-              dark
-                ? "border-white/10 bg-zinc-900 text-zinc-400 hover:text-white"
-                : "border-zinc-200 bg-zinc-50 text-zinc-600 hover:text-zinc-900"
-            }`}
+            onClick={() => {
+              setActiveTab("profile");
+              setExpanded(true);
+            }}
+            title="Perfil e Conta"
+            className="relative flex h-11 w-11 items-center justify-center overflow-hidden rounded-2xl border shadow-sm transition-transform hover:scale-105 cursor-pointer"
+            style={{
+              borderColor: withAlpha(accentColor, 0.35),
+              backgroundColor: withAlpha(accentColor, 0.15),
+              color: accentColor,
+            }}
           >
-            <X size={16} />
-          </button>
-        </div>
-
-        {/* Abas Internas (Meu Perfil vs Segurança) */}
-        <div className={`flex border-b px-6 gap-6 text-xs font-semibold ${dark ? "border-white/8" : "border-zinc-200/80"}`}>
-          <button
-            onClick={() => setActiveTab("profile")}
-            className={`pb-3 pt-3 relative transition-colors cursor-pointer ${
-              activeTab === "profile"
-                ? dark ? "text-white" : "text-zinc-900"
-                : "text-zinc-400 hover:text-zinc-300"
-            }`}
-          >
-            Meu Perfil
-            {activeTab === "profile" && (
-              <span
-                className="absolute bottom-0 left-0 right-0 h-0.5 rounded-full"
-                style={{ backgroundColor: accentColor }}
+            {userAvatar ? (
+              <img
+                src={userAvatar}
+                alt={userName}
+                className="h-full w-full object-cover"
               />
-            )}
-          </button>
-          <button
-            onClick={() => setActiveTab("security")}
-            className={`pb-3 pt-3 relative transition-colors cursor-pointer ${
-              activeTab === "security"
-                ? dark ? "text-white" : "text-zinc-900"
-                : "text-zinc-400 hover:text-zinc-300"
-            }`}
-          >
-            Segurança & Senha
-            {activeTab === "security" && (
-              <span
-                className="absolute bottom-0 left-0 right-0 h-0.5 rounded-full"
-                style={{ backgroundColor: accentColor }}
-              />
-            )}
-          </button>
-        </div>
-
-        {/* Formulário de Gestão de Conta */}
-        <div className="flex-1 overflow-y-auto p-6 scrollbar-none">
-          <form onSubmit={handleSave} className="flex flex-col gap-6">
-            {activeTab === "profile" ? (
-              <>
-                <div className="flex items-center gap-4">
-                  <div className="relative group">
-                    <div
-                      className="flex h-16 w-16 items-center justify-center rounded-2xl border text-lg font-bold overflow-hidden shadow-inner"
-                      style={{
-                        backgroundColor: withAlpha(accentColor, 0.2),
-                        borderColor: withAlpha(accentColor, 0.4),
-                        color: accentColor,
-                      }}
-                    >
-                      KD
-                    </div>
-                    <label
-                      htmlFor="avatar-upload-right"
-                      className="absolute inset-0 flex items-center justify-center bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity rounded-2xl cursor-pointer text-white"
-                      title="Alterar foto"
-                    >
-                      <Camera size={18} />
-                    </label>
-                    <input id="avatar-upload-right" type="file" accept="image/*" className="hidden" />
-                  </div>
-                  <div className="flex flex-col">
-                    <span className="text-xs font-bold">Foto de perfil</span>
-                    <span className="text-[11px] text-zinc-400">PNG ou JPG (max 2MB)</span>
-                  </div>
-                </div>
-
-                <div className="flex flex-col gap-1.5">
-                  <label className="text-xs font-semibold text-zinc-400 flex items-center gap-1.5">
-                    <User size={13} /> Nome Completo
-                  </label>
-                  <input
-                    type="text"
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                    className={`rounded-xl border px-3.5 py-2.5 text-xs font-medium outline-none transition-all ${
-                      dark
-                        ? "border-white/10 bg-zinc-900 text-white focus:border-white/30"
-                        : "border-zinc-200 bg-zinc-50 text-zinc-900 focus:border-zinc-400"
-                    }`}
-                  />
-                </div>
-
-                <div className="flex flex-col gap-1.5">
-                  <label className="text-xs font-semibold text-zinc-400 flex items-center gap-1.5">
-                    <Mail size={13} /> E-mail da Conta
-                  </label>
-                  <input
-                    type="email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    className={`rounded-xl border px-3.5 py-2.5 text-xs font-medium outline-none transition-all ${
-                      dark
-                        ? "border-white/10 bg-zinc-900 text-white focus:border-white/30"
-                        : "border-zinc-200 bg-zinc-50 text-zinc-900 focus:border-zinc-400"
-                    }`}
-                  />
-                </div>
-              </>
             ) : (
-              <>
-                <div className="flex flex-col gap-1.5">
-                  <label className="text-xs font-semibold text-zinc-400 flex items-center gap-1.5">
-                    <Lock size={13} /> Senha Atual
-                  </label>
-                  <input
-                    type="password"
-                    placeholder="••••••••"
-                    value={currentPassword}
-                    onChange={(e) => setCurrentPassword(e.target.value)}
-                    className={`rounded-xl border px-3.5 py-2.5 text-xs font-medium outline-none transition-all ${
-                      dark
-                        ? "border-white/10 bg-zinc-900 text-white focus:border-white/30"
-                        : "border-zinc-200 bg-zinc-50 text-zinc-900 focus:border-zinc-400"
-                    }`}
-                  />
-                </div>
-
-                <div className="flex flex-col gap-1.5">
-                  <label className="text-xs font-semibold text-zinc-400 flex items-center gap-1.5">
-                    <Shield size={13} /> Nova Senha
-                  </label>
-                  <input
-                    type="password"
-                    placeholder="••••••••"
-                    value={newPassword}
-                    onChange={(e) => setNewPassword(e.target.value)}
-                    className={`rounded-xl border px-3.5 py-2.5 text-xs font-medium outline-none transition-all ${
-                      dark
-                        ? "border-white/10 bg-zinc-900 text-white focus:border-white/30"
-                        : "border-zinc-200 bg-zinc-50 text-zinc-900 focus:border-zinc-400"
-                    }`}
-                  />
-                </div>
-              </>
+              <span className="text-sm font-black">
+                {userName.charAt(0).toUpperCase()}
+              </span>
             )}
+          </button>
 
+          {/* Indicador de status online */}
+          <span
+            className="absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full border-2"
+            style={{
+              backgroundColor: accentColor,
+              borderColor: dark ? "#09090b" : "#ffffff",
+            }}
+          />
+        </div>
+
+        {expanded && (
+          <div className="mt-2.5 text-center animate-in fade-in duration-200">
+            <p className="text-xs font-black truncate max-w-[200px]">{userName}</p>
+            <span className="text-[10px] font-semibold text-zinc-400">
+              Conta Pessoal
+            </span>
+          </div>
+        )}
+      </div>
+
+      <div className="mx-4 border-t border-zinc-500/10" />
+
+      {/* NAVEGAÇÃO DE ÍCONES (MESMA VIBE DA SIDEBAR ESQUERDA) */}
+      <nav className="flex flex-col gap-2.5 px-3 py-4">
+        {navItems.map((item) => {
+          const Icon = item.icon;
+          const isActive = expanded && activeTab === item.id;
+
+          return (
             <button
-              type="submit"
-              className="mt-2 flex w-full items-center justify-center gap-2 rounded-xl py-2.5 text-xs font-bold text-white shadow-md transition-all duration-200 hover:opacity-90 active:scale-95 cursor-pointer"
-              style={{ backgroundColor: accentColor }}
+              key={item.id}
+              onClick={() => handleSelectTab(item.id)}
+              title={!expanded ? item.label : undefined}
+              className={`group flex items-center rounded-2xl transition-all cursor-pointer ${
+                expanded
+                  ? "w-full gap-3 px-3.5 py-2.5 justify-start"
+                  : "mx-auto h-11 w-11 justify-center"
+              } ${
+                isActive
+                  ? "border font-bold shadow-xs"
+                  : dark
+                  ? "text-zinc-400 hover:bg-white/5 hover:text-zinc-200"
+                  : "text-zinc-500 hover:bg-zinc-100 hover:text-zinc-900"
+              }`}
+              style={
+                isActive
+                  ? {
+                      backgroundColor: withAlpha(accentColor, 0.14),
+                      borderColor: withAlpha(accentColor, 0.3),
+                      color: accentColor,
+                    }
+                  : undefined
+              }
             >
-              {saved ? (
-                <>
-                  <Check size={15} /> Alterações Salvas!
-                </>
-              ) : (
-                "Salvar Alterações"
+              <Icon size={18} strokeWidth={isActive ? 2.3 : 1.9} className="shrink-0" />
+              {expanded && (
+                <span className="truncate text-xs tracking-tight">{item.label}</span>
               )}
             </button>
-          </form>
-        </div>
+          );
+        })}
+      </nav>
 
-        {/* Rodapé com Logout */}
-        <div className={`p-6 border-t ${dark ? "border-white/8" : "border-zinc-200/80"}`}>
+      {/* ÁREA DE CONTEÚDO QUANDO EXPANDIDA */}
+      {expanded && (
+        <div className="flex-1 overflow-y-auto px-4 pb-5 space-y-4 thin-scroll animate-in fade-in duration-200">
+          <div className="border-t border-zinc-500/10 pt-4" />
+
+          {/* CONTEÚDO: CONTA & PERFIL */}
+          {activeTab === "profile" && (
+            <div className="space-y-4">
+              {/* Upload de Foto */}
+              <div
+                className={`rounded-2xl border p-3.5 space-y-3 ${
+                  dark ? "border-white/8 bg-white/[0.02]" : "border-zinc-200 bg-zinc-50"
+                }`}
+              >
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] font-black uppercase tracking-wider text-zinc-400">
+                    Foto de Perfil
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    className="inline-flex items-center gap-1 text-[11px] font-bold hover:opacity-80 cursor-pointer"
+                    style={{ color: accentColor }}
+                  >
+                    <Camera size={12} /> Alterar
+                  </button>
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/*"
+                    onChange={handleAvatarChange}
+                    className="hidden"
+                  />
+                </div>
+
+                {/* Editar Nome */}
+                <div className="space-y-1.5 pt-1 border-t border-zinc-500/10">
+                  <span className="text-[10px] font-black uppercase tracking-wider text-zinc-400">
+                    Nome de Exibição
+                  </span>
+                  {isEditingName ? (
+                    <form onSubmit={handleSaveName} className="flex gap-1.5">
+                      <input
+                        autoFocus
+                        value={editingName}
+                        onChange={(e) => setEditingName(e.target.value)}
+                        className={`min-w-0 flex-1 rounded-xl border px-2.5 py-1.5 text-xs font-bold outline-none ${
+                          dark
+                            ? "border-white/15 bg-zinc-900 text-white"
+                            : "border-zinc-300 bg-white text-zinc-900"
+                        }`}
+                      />
+                      <button
+                        type="submit"
+                        className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl text-white cursor-pointer"
+                        style={{ backgroundColor: accentColor }}
+                      >
+                        <Check size={14} />
+                      </button>
+                    </form>
+                  ) : (
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-bold">{userName}</span>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setEditingName(userName);
+                          setIsEditingName(true);
+                        }}
+                        className="text-[11px] font-bold hover:opacity-80 cursor-pointer"
+                        style={{ color: accentColor }}
+                      >
+                        Editar
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Status da Conta */}
+              <div
+                className={`rounded-2xl border p-3.5 space-y-2 ${
+                  dark ? "border-white/8 bg-white/[0.02]" : "border-zinc-200 bg-zinc-50"
+                }`}
+              >
+                <div className="flex items-center gap-2 text-xs font-bold">
+                  <ShieldCheck size={14} style={{ color: accentColor }} />
+                  <span>Workspace Local Ativo</span>
+                </div>
+                <p className="text-[11px] text-zinc-400 leading-relaxed">
+                  Seus dados, notas e fluxogramas são salvos automaticamente neste navegador.
+                </p>
+              </div>
+            </div>
+          )}
+
+          {/* CONTEÚDO: TUTORIAL */}
+          {activeTab === "tutorial" && (
+            <div className="space-y-3">
+              {[
+                {
+                  title: "Busca Rápida (Ctrl + K)",
+                  desc: "Pressione Ctrl + K ou Cmd + K em qualquer tela para navegar e criar itens.",
+                  icon: Command,
+                },
+                {
+                  title: "Agenda & Semana",
+                  desc: "Alterne entre Mês, Semana em linhas e Visão Anual no topo da agenda.",
+                  icon: Calendar,
+                },
+                {
+                  title: "Notas & Pastas",
+                  desc: "Crie cadernos e anotações organizadas por pastas coloridas.",
+                  icon: StickyNote,
+                },
+                {
+                  title: "Fluxogramas",
+                  desc: "Conecte ideias ou blocos de código visualmente na aba de fluxos.",
+                  icon: GitFork,
+                },
+              ].map((step, i) => {
+                const StepIcon = step.icon;
+                return (
+                  <div
+                    key={i}
+                    className={`rounded-2xl border p-3 space-y-1 ${
+                      dark ? "border-white/8 bg-white/[0.02]" : "border-zinc-200 bg-zinc-50"
+                    }`}
+                  >
+                    <div className="flex items-center gap-2">
+                      <StepIcon size={13} style={{ color: accentColor }} />
+                      <h4 className="text-xs font-black">{step.title}</h4>
+                    </div>
+                    <p className="text-[11px] text-zinc-400 leading-relaxed">
+                      {step.desc}
+                    </p>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          {/* CONTEÚDO: ATALHOS */}
+          {activeTab === "keybinds" && (
+            <div className="space-y-3">
+              <div
+                className={`rounded-2xl border overflow-hidden ${
+                  dark ? "border-white/8 bg-white/[0.02]" : "border-zinc-200 bg-zinc-50"
+                }`}
+              >
+                {[
+                  ["Command Palette", "Ctrl + K"],
+                  ["Fechar Modais", "ESC"],
+                  ["Navegar Listas", "↑ / ↓"],
+                  ["Confirmar", "Enter"],
+                ].map(([label, shortcut], i) => (
+                  <div
+                    key={i}
+                    className="flex items-center justify-between px-3 py-2.5 text-[11px] font-bold border-b border-zinc-500/10 last:border-0"
+                  >
+                    <span>{label}</span>
+                    <kbd className="rounded-md bg-black/10 dark:bg-white/10 px-2 py-0.5 text-[10px] font-extrabold text-zinc-400">
+                      {shortcut}
+                    </kbd>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* RODAPÉ MINIMALISTA QUANDO RECOLHIDO */}
+      {!expanded && (
+        <div className="mt-auto pb-5 flex flex-col items-center gap-3">
+          <div className="w-8 border-t border-zinc-500/10" />
           <button
-            onClick={() => alert("Sessão encerrada.")}
-            className={`flex w-full items-center justify-center gap-2 rounded-xl border px-4 py-2.5 text-xs font-bold transition-all duration-200 cursor-pointer ${
+            onClick={() => {
+              setActiveTab("tutorial");
+              setExpanded(true);
+            }}
+            title="Ajuda & Tutorial"
+            className={`flex h-10 w-10 items-center justify-center rounded-2xl transition cursor-pointer ${
               dark
-                ? "border-red-500/20 bg-red-500/10 text-red-400 hover:bg-red-500/20"
-                : "border-red-200 bg-red-50 text-red-600 hover:bg-red-100"
+                ? "text-zinc-500 hover:bg-white/5 hover:text-zinc-300"
+                : "text-zinc-400 hover:bg-zinc-100 hover:text-zinc-700"
             }`}
           >
-            <LogOut size={15} /> Encerrar Sessão (Logout)
+            <Sparkles size={16} />
           </button>
         </div>
-      </aside>
-    </div>
+      )}
+    </aside>
   );
 }

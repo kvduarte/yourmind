@@ -2,12 +2,15 @@
 
 export type Section =
   | "home"
+  | "ai"
   | "flows"
   | "notes"
   | "processes"
   | "planning"
   | "clients"
   | "central"
+  | "sheets"
+  | "calendar"
   | "personal"
   | "ai_customizer";
 
@@ -15,13 +18,17 @@ export type FlowKind = "general" | "code";
 
 export const SECTION_COLORS: Record<Section, string> = {
   home: "#6366f1",
+  ai: "#6366f1",
   flows: "#6366f1",
   notes: "#6366f1",
   processes: "#6366f1",
   planning: "#6366f1",
   clients: "#6366f1",
   central: "#6366f1",
+  sheets: "#6366f1",
+  calendar: "#6366f1",
   personal: "#6366f1",
+  ai_customizer: "#6366f1",
 };
 
 export const KIND_COLORS: Record<FlowKind, string> = {
