@@ -27,6 +27,10 @@ import {
   CalendarDays,
   Flag,
   MapPin,
+  ExternalLink,
+  FileText,
+  Image as ImageIcon,
+  Repeat,
 } from "lucide-react";
 
 import { Folder, Task, Theme, Topic } from "@/types";
@@ -109,6 +113,15 @@ type SeasonKey = "summer" | "autumn" | "winter" | "spring";
 
 const WEEKDAYS = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
 const WEEKDAYS_SHORT = ["D", "S", "T", "Q", "Q", "S", "S"];
+
+const RECURRENCE_LABELS: Record<RecurrenceFrequency, string> = {
+  none: "",
+  daily: "Diário",
+  weekly: "Semanal",
+  biweekly: "Quinzenal",
+  monthly: "Mensal",
+  yearly: "Anual",
+};
 
 const FOLDER_COLOR_OPTIONS = [
   { name: "red", hex: "#ef4444" },
@@ -270,6 +283,7 @@ export default function CalendarView({
   onToggleTask,
   onDeleteTask,
   onCreateFolder,
+  onNavigate,
 }: CalendarViewProps) {
   const dark = theme === "dark";
   const ui = getUi(dark);
@@ -312,6 +326,9 @@ export default function CalendarView({
   const [modalOpen, setModalOpen] = useState(false);
   const [editingTask, setEditingTask] = useState<RichCalendarTask | null>(null);
 
+  // Estado do pop-up de detalhes do dia
+  const [dayModalOpen, setDayModalOpen] = useState(false);
+
   const [creatingFolder, setCreatingFolder] = useState(false);
   const [newFolderName, setNewFolderName] = useState("");
   const [newFolderColor, setNewFolderColor] = useState("blue");
@@ -322,6 +339,18 @@ export default function CalendarView({
       if (savedUf) setSelectedState(savedUf);
     }
   }, []);
+
+  // Fechar pop-up do dia com ESC
+  useEffect(() => {
+    if (!dayModalOpen) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && !modalOpen) {
+        setDayModalOpen(false);
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [dayModalOpen, modalOpen]);
 
   const handleStateChange = (uf: string) => {
     setSelectedState(uf);
@@ -400,7 +429,6 @@ export default function CalendarView({
 
   const SeasonIcon = seasonInfo.icon;
 
-  // Cor dinâmica de cada folha/pétala seguindo a cor ou paleta das configurações
   const getSeasonParticleColor = (index: number) => {
     if (colorStyle === "preset") {
       const paletteColors = activePalette.colors;
@@ -512,8 +540,29 @@ export default function CalendarView({
       if (!map[key]) map[key] = [];
       map[key].push(t);
     }
+    // Ordenar por horário quando disponível
+    for (const key of Object.keys(map)) {
+      map[key].sort((a, b) => (a.time || "99:99").localeCompare(b.time || "99:99"));
+    }
     return map;
   }, [filteredTasks]);
+
+  const selectedDayTasks = useMemo(() => {
+    return tasksByDate[selectedDateKey] || [];
+  }, [tasksByDate, selectedDateKey]);
+
+  const selectedDateFormatted = useMemo(() => {
+    if (!selectedDateKey) return { weekday: "", fullDate: "" };
+    const dateObj = new Date(selectedDateKey + "T00:00:00");
+    return {
+      weekday: dateObj.toLocaleDateString("pt-BR", { weekday: "long" }),
+      fullDate: dateObj.toLocaleDateString("pt-BR", {
+        day: "2-digit",
+        month: "long",
+        year: "numeric",
+      }),
+    };
+  }, [selectedDateKey]);
 
   const calendarDays = useMemo(() => {
     const year = currentMonth.getFullYear();
@@ -602,6 +651,12 @@ export default function CalendarView({
     year: "numeric",
   });
 
+  // Ao clicar em um dia do calendário, seleciona o dia e abre o pop-up
+  const handleSelectDayAndOpenModal = (key: string) => {
+    setSelectedDateKey(key);
+    setDayModalOpen(true);
+  };
+
   const handleOpenNew = () => {
     setEditingTask(null);
     setModalOpen(true);
@@ -663,6 +718,16 @@ export default function CalendarView({
             opacity: 0.32;
           }
         }
+        @keyframes modalPopIn {
+          0% {
+            opacity: 0;
+            transform: scale(0.96) translateY(8px);
+          }
+          100% {
+            opacity: 1;
+            transform: scale(1) translateY(0);
+          }
+        }
       `}</style>
 
       <div className="mx-auto max-w-6xl space-y-6 p-6 sm:p-10">
@@ -674,13 +739,11 @@ export default function CalendarView({
               : "border-zinc-200/80 bg-white/90 text-zinc-900 shadow-zinc-200/50 backdrop-blur-2xl"
           }`}
         >
-          {/* Brilho principal da paleta/cor do usuário */}
           <div
             className="pointer-events-none absolute -left-20 -top-20 h-72 w-72 rounded-full opacity-25 blur-[110px]"
             style={{ background: primaryFill }}
           />
 
-          {/* Efeito Atmosférico de Fundo seguindo a cor única ou paleta escolhida */}
           <div className="pointer-events-none absolute inset-0 overflow-hidden z-0">
             <div
               className="absolute -right-12 -top-12 h-64 w-64 rounded-full blur-[90px]"
@@ -754,7 +817,6 @@ export default function CalendarView({
                   </span>
                 </div>
 
-                {/* Seletor de Região / UF para Feriados */}
                 <div
                   className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-bold backdrop-blur-md shrink-0 ${
                     dark
@@ -800,15 +862,16 @@ export default function CalendarView({
                 )}
               </div>
 
-              <p className={`text-xs sm:text-sm font-medium ${subtitleColor} max-w-lg`}>
-                Organize compromissos, feriados e conexões com seus projetos em um
-                só lugar.
+              <p
+                className={`text-xs sm:text-sm font-medium ${subtitleColor} max-w-lg`}
+              >
+                Organize compromissos, feriados e conexões com seus projetos em
+                um só lugar.
               </p>
             </div>
 
-            {/* BLOCO DIREITO: Controles organizados em 2 linhas alinhadas à direita */}
+            {/* BLOCO DIREITO: Controles */}
             <div className="flex flex-col items-start lg:items-end gap-2.5 shrink-0">
-              {/* Linha 1: Botão de Ação Principal */}
               <button
                 onClick={handleOpenNew}
                 className={`inline-flex items-center gap-1.5 rounded-xl px-4 py-2 text-xs font-black shadow-md transition-all hover:scale-[1.02] active:scale-95 cursor-pointer whitespace-nowrap ${
@@ -820,9 +883,7 @@ export default function CalendarView({
                 <span>Novo Evento</span>
               </button>
 
-              {/* Linha 2: Seletor de Visão + Navegação de Datas */}
               <div className="flex flex-wrap items-center gap-2">
-                {/* Seletor Ano / Mês / Semana */}
                 <div
                   className={`flex items-center rounded-xl border p-1 shadow-inner ${
                     dark
@@ -844,7 +905,9 @@ export default function CalendarView({
                             : "text-zinc-400 hover:text-zinc-100"
                         }`}
                         style={
-                          viewMode === mode ? { background: primaryFill } : undefined
+                          viewMode === mode
+                            ? { background: primaryFill }
+                            : undefined
                         }
                       >
                         {labels[mode]}
@@ -853,7 +916,6 @@ export default function CalendarView({
                   })}
                 </div>
 
-                {/* Navegação < Hoje > */}
                 <div
                   className={`flex items-center rounded-xl border p-1 shadow-inner ${
                     dark
@@ -893,7 +955,9 @@ export default function CalendarView({
                   <button
                     onClick={() => {
                       const now = new Date();
-                      setCurrentMonth(new Date(now.getFullYear(), now.getMonth(), 1));
+                      setCurrentMonth(
+                        new Date(now.getFullYear(), now.getMonth(), 1)
+                      );
                       setSelectedDateKey(toKey(now));
                     }}
                     className={`px-3 py-1 text-xs font-extrabold transition cursor-pointer rounded-lg hover:bg-white/10 whitespace-nowrap ${titleColor}`}
@@ -1036,7 +1100,9 @@ export default function CalendarView({
                             <div className="min-w-0">
                               <p
                                 className={`text-xs font-extrabold truncate ${
-                                  task.completed ? "line-through opacity-50" : ""
+                                  task.completed
+                                    ? "line-through opacity-50"
+                                    : ""
                                 } ${titleColor}`}
                               >
                                 {task.title || taskExtra.text}
@@ -1301,7 +1367,8 @@ export default function CalendarView({
                         Visão Anual Consolidada
                       </h3>
                       <p className="text-xs text-zinc-400">
-                        Dias em âmbar indicam feriados • Clique em um mês para abrir
+                        Dias em âmbar indicam feriados • Dias em verde indicam
+                        tarefas concluídas
                       </p>
                     </div>
                     <span className="text-xs font-bold px-3 py-1 rounded-lg bg-black/10 dark:bg-white/10 text-zinc-300">
@@ -1362,14 +1429,24 @@ export default function CalendarView({
                               if (!item) {
                                 return <span key={idx} />;
                               }
-                              const hasTask = Boolean(tasksByDate[item.key]);
+                              const dayTasksList = tasksByDate[item.key] || [];
+                              const hasTask = dayTasksList.length > 0;
+                              const allDone =
+                                hasTask &&
+                                dayTasksList.every((t) => t.completed);
                               const holiday = holidaysMap[item.key];
                               const isTodayMini = item.key === todayKey;
 
                               return (
                                 <span
                                   key={idx}
-                                  title={holiday ? holiday.name : undefined}
+                                  title={
+                                    holiday
+                                      ? holiday.name
+                                      : allDone
+                                      ? "Concluído"
+                                      : undefined
+                                  }
                                   className={`flex h-4.5 w-4.5 mx-auto items-center justify-center text-[10px] font-bold rounded ${
                                     isTodayMini
                                       ? isLightBtn
@@ -1377,12 +1454,17 @@ export default function CalendarView({
                                         : "bg-white text-zinc-950 font-black"
                                       : holiday
                                       ? "bg-amber-500/20 text-amber-400 font-extrabold"
+                                      : allDone
+                                      ? "bg-emerald-500/20 text-emerald-400 font-extrabold"
                                       : hasTask
                                       ? "bg-black/15 dark:bg-white/20 font-extrabold"
                                       : "text-zinc-500"
                                   }`}
                                   style={
-                                    hasTask && !isTodayMini && !holiday
+                                    hasTask &&
+                                    !isTodayMini &&
+                                    !holiday &&
+                                    !allDone
                                       ? { color: primaryColor }
                                       : undefined
                                   }
@@ -1416,6 +1498,9 @@ export default function CalendarView({
                   <div className="grid grid-cols-7 gap-2">
                     {calendarDays.map(({ date, key, inMonth }) => {
                       const dayTasks = tasksByDate[key] || [];
+                      const allDone =
+                        dayTasks.length > 0 &&
+                        dayTasks.every((t) => t.completed);
                       const holiday = holidaysMap[key];
                       const isToday = key === todayKey;
                       const isSelected = key === selectedDateKey;
@@ -1423,7 +1508,7 @@ export default function CalendarView({
                       return (
                         <button
                           key={key}
-                          onClick={() => setSelectedDateKey(key)}
+                          onClick={() => handleSelectDayAndOpenModal(key)}
                           title={holiday ? holiday.name : undefined}
                           className={`group relative flex min-h-[96px] sm:min-h-[106px] flex-col justify-between rounded-xl border p-2 text-left transition-all cursor-pointer ${
                             !inMonth ? "opacity-30 hover:opacity-60" : ""
@@ -1473,7 +1558,19 @@ export default function CalendarView({
                                 />
                               )}
                               {dayTasks.length > 0 && (
-                                <span className="text-[10px] font-extrabold px-1.5 py-0.2 rounded bg-black/10 dark:bg-white/10 text-zinc-300">
+                                <span
+                                  title={
+                                    allDone
+                                      ? "Todas as tarefas concluídas"
+                                      : undefined
+                                  }
+                                  className={`inline-flex items-center gap-0.5 text-[10px] font-extrabold px-1.5 py-0.2 rounded ${
+                                    allDone
+                                      ? "bg-emerald-500/20 text-emerald-400"
+                                      : "bg-black/10 dark:bg-white/10 text-zinc-300"
+                                  }`}
+                                >
+                                  {allDone && <CheckCircle2 size={9} />}
                                   {dayTasks.length}
                                 </span>
                               )}
@@ -1487,26 +1584,43 @@ export default function CalendarView({
                               </div>
                             )}
 
-                            {dayTasks.slice(0, holiday ? 1 : 2).map((t, idx) => {
-                              const tExtra = t as RichCalendarTask & {
-                                text?: string;
-                              };
-                              return (
-                                <div
-                                  key={idx}
-                                  className="truncate text-[10px] font-bold px-1.5 py-0.5 rounded bg-black/10 dark:bg-white/10 text-zinc-200 flex items-center gap-1"
-                                >
-                                  {t.time && (
-                                    <span className="opacity-70 text-[9px]">
-                                      {t.time}
+                            {dayTasks
+                              .slice(0, holiday ? 1 : 2)
+                              .map((t, idx) => {
+                                const tExtra = t as RichCalendarTask & {
+                                  text?: string;
+                                };
+                                return (
+                                  <div
+                                    key={t.id || idx}
+                                    className={`truncate text-[10px] font-bold px-1.5 py-0.5 rounded flex items-center gap-1 transition-all ${
+                                      t.completed
+                                        ? dark
+                                          ? "bg-white/[0.04] text-zinc-400 line-through opacity-60"
+                                          : "bg-zinc-200/70 text-zinc-500 line-through opacity-65"
+                                        : dark
+                                        ? "bg-white/10 text-zinc-200"
+                                        : "bg-zinc-200/80 text-zinc-800"
+                                    }`}
+                                  >
+                                    {t.completed && (
+                                      <CheckCircle2
+                                        size={10}
+                                        style={{ color: primaryColor }}
+                                        className="shrink-0"
+                                      />
+                                    )}
+                                    {t.time && (
+                                      <span className="opacity-70 text-[9px] shrink-0">
+                                        {t.time}
+                                      </span>
+                                    )}
+                                    <span className="truncate">
+                                      {t.title || tExtra.text}
                                     </span>
-                                  )}
-                                  <span className="truncate">
-                                    {t.title || tExtra.text}
-                                  </span>
-                                </div>
-                              );
-                            })}
+                                  </div>
+                                );
+                              })}
 
                             {dayTasks.length > (holiday ? 1 : 2) && (
                               <span className="block text-[10px] text-zinc-400 font-bold pl-0.5">
@@ -1545,7 +1659,7 @@ export default function CalendarView({
                       return (
                         <div
                           key={key}
-                          onClick={() => setSelectedDateKey(key)}
+                          onClick={() => handleSelectDayAndOpenModal(key)}
                           className={`group rounded-2xl border p-3.5 sm:p-4 transition-all cursor-pointer flex flex-col sm:flex-row sm:items-center gap-3 ${
                             isSelected
                               ? "shadow-sm"
@@ -1613,15 +1727,24 @@ export default function CalendarView({
                                 };
                                 return (
                                   <div
-                                    key={idx}
+                                    key={t.id || idx}
                                     className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 border text-xs font-bold ${
-                                      t.completed ? "line-through opacity-50" : ""
+                                      t.completed
+                                        ? "line-through opacity-50"
+                                        : ""
                                     } ${
                                       dark
                                         ? "bg-zinc-900/90 border-white/10 text-zinc-200"
                                         : "bg-white border-zinc-200 text-zinc-800"
                                     }`}
                                   >
+                                    {t.completed && (
+                                      <CheckCircle2
+                                        size={12}
+                                        style={{ color: primaryColor }}
+                                        className="shrink-0"
+                                      />
+                                    )}
                                     {t.time && (
                                       <span className="text-[10px] text-zinc-400 font-semibold flex items-center gap-1">
                                         <Clock size={10} /> {t.time}
@@ -1652,6 +1775,467 @@ export default function CalendarView({
           </section>
         </div>
       </div>
+
+      {/* POP-UP / MODAL DE DETALHES DO DIA SELECIONADO */}
+      {dayModalOpen && (
+        <div
+          onClick={() => setDayModalOpen(false)}
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-md transition-opacity"
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{ animation: "modalPopIn 0.2s cubic-bezier(0.16, 1, 0.3, 1)" }}
+            className={`relative flex max-h-[88vh] w-full max-w-2xl flex-col overflow-hidden rounded-[2rem] border shadow-2xl ${
+              dark
+                ? "border-white/15 bg-zinc-950/95 text-zinc-100"
+                : "border-zinc-200 bg-white text-zinc-900"
+            }`}
+          >
+            {/* Brilho decorativo no topo */}
+            <div
+              className="pointer-events-none absolute -right-16 -top-16 h-48 w-48 rounded-full opacity-20 blur-[80px]"
+              style={{ background: primaryFill }}
+            />
+
+            {/* CABEÇALHO DO POP-UP */}
+            <div className="relative z-10 flex items-start justify-between gap-4 border-b border-zinc-500/15 p-6 pb-5">
+              <div className="space-y-1">
+                <div className="flex flex-wrap items-center gap-2">
+                  <span
+                    className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-[11px] font-black uppercase tracking-wider"
+                    style={{
+                      backgroundColor: withAlpha(primaryColor, 0.16),
+                      color: primaryColor,
+                    }}
+                  >
+                    <CalendarDays size={12} />
+                    {selectedDateFormatted.weekday}
+                  </span>
+
+                  {selectedDateKey === todayKey && (
+                    <span className="rounded-full bg-emerald-500/15 border border-emerald-500/30 px-2.5 py-0.5 text-[11px] font-bold text-emerald-400">
+                      Hoje
+                    </span>
+                  )}
+
+                  <span className="text-xs font-bold text-zinc-400">
+                    • {selectedDayTasks.length}{" "}
+                    {selectedDayTasks.length === 1
+                      ? "compromisso"
+                      : "compromissos"}
+                  </span>
+                </div>
+
+                <h2 className={`text-2xl font-black capitalize ${titleColor}`}>
+                  {selectedDateFormatted.fullDate}
+                </h2>
+              </div>
+
+              <div className="flex items-center gap-2 shrink-0">
+                <button
+                  onClick={handleOpenNew}
+                  className={`inline-flex items-center gap-1.5 rounded-xl px-3.5 py-2 text-xs font-black shadow-md transition-all hover:scale-[1.02] active:scale-95 cursor-pointer ${
+                    isLightBtn ? "text-zinc-950" : "text-white"
+                  }`}
+                  style={{ background: primaryFill }}
+                >
+                  <Plus size={14} strokeWidth={2.8} />
+                  <span>Agendar</span>
+                </button>
+
+                <button
+                  onClick={() => setDayModalOpen(false)}
+                  title="Fechar"
+                  className={`flex h-9 w-9 items-center justify-center rounded-xl border transition cursor-pointer ${
+                    dark
+                      ? "border-white/10 bg-white/5 text-zinc-400 hover:bg-white/10 hover:text-white"
+                      : "border-zinc-200 bg-zinc-100 text-zinc-600 hover:bg-zinc-200 hover:text-zinc-900"
+                  }`}
+                >
+                  <X size={16} />
+                </button>
+              </div>
+            </div>
+
+            {/* CORPO DO POP-UP (ROLÁVEL) */}
+            <div className="thin-scroll relative z-10 flex-1 overflow-y-auto p-6 space-y-4">
+              {/* Alerta de feriado se houver */}
+              {selectedHoliday && (
+                <div className="flex items-center gap-3 rounded-2xl border border-amber-500/30 bg-amber-500/10 p-4">
+                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-amber-500/20 text-amber-400">
+                    <Flag size={16} />
+                  </div>
+                  <div>
+                    <p className="text-xs font-black text-amber-400">
+                      {selectedHoliday.name}
+                    </p>
+                    <p className="text-[11px] font-medium text-amber-300/80">
+                      {selectedHoliday.type === "nacional"
+                        ? "Feriado Nacional"
+                        : `Feriado Regional (${selectedState})`}
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {/* Lista de compromissos agendados */}
+              {selectedDayTasks.length === 0 ? (
+                <div
+                  className={`flex flex-col items-center justify-center rounded-2xl border border-dashed py-12 px-6 text-center ${
+                    dark
+                      ? "border-white/10 bg-white/[0.01]"
+                      : "border-zinc-200 bg-zinc-50/60"
+                  }`}
+                >
+                  <div
+                    className="mb-3 flex h-12 w-12 items-center justify-center rounded-2xl"
+                    style={{
+                      backgroundColor: withAlpha(primaryColor, 0.14),
+                      color: primaryColor,
+                    }}
+                  >
+                    <CalendarIcon size={22} />
+                  </div>
+                  <p className={`text-sm font-black ${titleColor}`}>
+                    Nenhum evento agendado para este dia
+                  </p>
+                  <p className="mt-1 max-w-xs text-xs text-zinc-400">
+                    Clique no botão abaixo para adicionar um compromisso, tarefa
+                    ou conectar a um projeto.
+                  </p>
+                  <button
+                    onClick={handleOpenNew}
+                    className={`mt-4 inline-flex items-center gap-1.5 rounded-xl px-4 py-2 text-xs font-black shadow-sm transition hover:scale-[1.02] cursor-pointer ${
+                      isLightBtn ? "text-zinc-950" : "text-white"
+                    }`}
+                    style={{ background: primaryFill }}
+                  >
+                    <Plus size={14} strokeWidth={2.8} />
+                    Criar novo evento
+                  </button>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {selectedDayTasks.map((task) => {
+                    const taskExtra = task as RichCalendarTask & {
+                      text?: string;
+                    };
+                    const taskFolder = folders.find(
+                      (f) => f.id === task.folderId
+                    );
+                    const folderColor = taskFolder
+                      ? getResolvedFolderColor(taskFolder.color)
+                      : undefined;
+
+                    const conn = task.connections;
+                    const hasConnections =
+                      conn &&
+                      (conn.note ||
+                        conn.flow ||
+                        conn.process ||
+                        conn.planning ||
+                        (conn.people && conn.people.length > 0));
+
+                    return (
+                      <div
+                        key={task.id}
+                        className={`group rounded-2xl border p-4 sm:p-5 transition-all ${
+                          dark
+                            ? "border-white/10 bg-white/[0.03] hover:border-white/20"
+                            : "border-zinc-200 bg-zinc-50/80 hover:border-zinc-300"
+                        }`}
+                      >
+                        <div className="flex items-start justify-between gap-3">
+                          {/* Checkbox + Conteúdo Principal */}
+                          <div className="flex items-start gap-3 min-w-0 flex-1">
+                            <button
+                              onClick={() => onToggleTask(task.id)}
+                              title={
+                                task.completed
+                                  ? "Marcar como pendente"
+                                  : "Concluir"
+                              }
+                              className="mt-0.5 shrink-0 cursor-pointer transition-transform hover:scale-110"
+                            >
+                              {task.completed ? (
+                                <CheckCircle2
+                                  size={20}
+                                  style={{ color: primaryColor }}
+                                />
+                              ) : (
+                                <Circle
+                                  size={20}
+                                  className="text-zinc-400 hover:text-zinc-200"
+                                />
+                              )}
+                            </button>
+
+                            <div className="min-w-0 flex-1 space-y-2.5">
+                              {/* Título e Metadados */}
+                              <div>
+                                <h3
+                                  className={`text-base font-black leading-snug ${
+                                    task.completed
+                                      ? "line-through opacity-50"
+                                      : ""
+                                  } ${titleColor}`}
+                                >
+                                  {task.title || taskExtra.text}
+                                </h3>
+
+                                {/* Badges: Horário, Pasta, Recorrência */}
+                                <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+                                  {task.time && (
+                                    <span
+                                      className={`inline-flex items-center gap-1 rounded-lg px-2 py-0.5 text-[11px] font-bold ${
+                                        dark
+                                          ? "bg-white/10 text-zinc-200"
+                                          : "bg-zinc-200/80 text-zinc-800"
+                                      }`}
+                                    >
+                                      <Clock
+                                        size={11}
+                                        style={{ color: primaryColor }}
+                                      />
+                                      {task.time}
+                                    </span>
+                                  )}
+
+                                  {taskFolder && (
+                                    <span
+                                      className="inline-flex items-center gap-1.5 rounded-lg px-2 py-0.5 text-[11px] font-bold"
+                                      style={{
+                                        backgroundColor: withAlpha(
+                                          folderColor || primaryColor,
+                                          0.16
+                                        ),
+                                        color: folderColor || primaryColor,
+                                      }}
+                                    >
+                                      <span
+                                        className="h-2 w-2 rounded-full"
+                                        style={{
+                                          backgroundColor:
+                                            folderColor || primaryColor,
+                                        }}
+                                      />
+                                      {taskFolder.name}
+                                    </span>
+                                  )}
+
+                                  {task.recurrence &&
+                                    task.recurrence !== "none" && (
+                                      <span
+                                        className={`inline-flex items-center gap-1 rounded-lg px-2 py-0.5 text-[11px] font-bold ${
+                                          dark
+                                            ? "bg-white/5 text-zinc-400"
+                                            : "bg-zinc-200/60 text-zinc-600"
+                                        }`}
+                                      >
+                                        <Repeat size={11} />
+                                        {RECURRENCE_LABELS[task.recurrence]}
+                                      </span>
+                                    )}
+                                </div>
+                              </div>
+
+                              {/* Descrição Completa */}
+                              {task.description && (
+                                <p
+                                  className={`whitespace-pre-line text-xs sm:text-sm leading-relaxed ${
+                                    dark ? "text-zinc-300" : "text-zinc-600"
+                                  }`}
+                                >
+                                  {task.description}
+                                </p>
+                              )}
+
+                              {/* Imagem anexada */}
+                              {task.imageUrl && (
+                                <div className="overflow-hidden rounded-xl border border-white/10 max-w-sm">
+                                  <img
+                                    src={task.imageUrl}
+                                    alt={task.title || "Anexo"}
+                                    className="max-h-44 w-full object-cover"
+                                  />
+                                </div>
+                              )}
+
+                              {/* Link e Documentos */}
+                              {(task.link ||
+                                (task.documents &&
+                                  task.documents.length > 0)) && (
+                                <div className="flex flex-wrap items-center gap-2 pt-0.5">
+                                  {task.link && (
+                                    <a
+                                      href={task.link}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="inline-flex items-center gap-1.5 rounded-lg border border-white/10 bg-white/5 px-2.5 py-1 text-xs font-bold transition hover:bg-white/10"
+                                      style={{ color: primaryColor }}
+                                    >
+                                      <ExternalLink size={12} />
+                                      <span className="truncate max-w-[200px]">
+                                        Abrir Link
+                                      </span>
+                                    </a>
+                                  )}
+
+                                  {task.documents?.map((doc, dIdx) => (
+                                    <a
+                                      key={dIdx}
+                                      href={doc.url}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className={`inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1 text-xs font-bold transition ${
+                                        dark
+                                          ? "border-white/10 bg-white/5 text-zinc-200 hover:bg-white/10"
+                                          : "border-zinc-200 bg-white text-zinc-700 hover:bg-zinc-100"
+                                      }`}
+                                    >
+                                      <FileText
+                                        size={12}
+                                        style={{ color: primaryColor }}
+                                      />
+                                      <span className="truncate max-w-[160px]">
+                                        {doc.name}
+                                      </span>
+                                    </a>
+                                  ))}
+                                </div>
+                              )}
+
+                              {/* Conexões com outros módulos */}
+                              {hasConnections && (
+                                <div className="flex flex-wrap items-center gap-1.5 pt-1 border-t border-zinc-500/10">
+                                  {conn?.note && (
+                                    <button
+                                      onClick={() => {
+                                        setDayModalOpen(false);
+                                        onNavigate(`notes:${conn.note!.id}`);
+                                      }}
+                                      className="inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1 text-[11px] font-bold transition hover:opacity-80 cursor-pointer"
+                                      style={{
+                                        borderColor: moduleMeta.note.border,
+                                        backgroundColor: moduleMeta.note.bg,
+                                        color: moduleMeta.note.color,
+                                      }}
+                                    >
+                                      <StickyNote size={11} />
+                                      Nota: {conn.note.title}
+                                    </button>
+                                  )}
+
+                                  {conn?.flow && (
+                                    <button
+                                      onClick={() => {
+                                        setDayModalOpen(false);
+                                        onNavigate(`flows:${conn.flow!.id}`);
+                                      }}
+                                      className="inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1 text-[11px] font-bold transition hover:opacity-80 cursor-pointer"
+                                      style={{
+                                        borderColor: moduleMeta.flow.border,
+                                        backgroundColor: moduleMeta.flow.bg,
+                                        color: moduleMeta.flow.color,
+                                      }}
+                                    >
+                                      <GitFork size={11} />
+                                      Fluxo: {conn.flow.title}
+                                    </button>
+                                  )}
+
+                                  {conn?.process && (
+                                    <button
+                                      onClick={() => {
+                                        setDayModalOpen(false);
+                                        onNavigate(
+                                          `processes:${conn.process!.id}`
+                                        );
+                                      }}
+                                      className="inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1 text-[11px] font-bold transition hover:opacity-80 cursor-pointer"
+                                      style={{
+                                        borderColor: moduleMeta.process.border,
+                                        backgroundColor: moduleMeta.process.bg,
+                                        color: moduleMeta.process.color,
+                                      }}
+                                    >
+                                      <Workflow size={11} />
+                                      Processo: {conn.process.title}
+                                      {conn.process.step
+                                        ? ` (${conn.process.step})`
+                                        : ""}
+                                    </button>
+                                  )}
+
+                                  {conn?.planning && (
+                                    <span
+                                      className="inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1 text-[11px] font-bold"
+                                      style={{
+                                        borderColor: moduleMeta.planning.border,
+                                        backgroundColor: moduleMeta.planning.bg,
+                                        color: moduleMeta.planning.color,
+                                      }}
+                                    >
+                                      <Target size={11} />
+                                      Meta: {conn.planning.goal}
+                                    </span>
+                                  )}
+
+                                  {conn?.people && conn.people.length > 0 && (
+                                    <span
+                                      className="inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1 text-[11px] font-bold"
+                                      style={{
+                                        borderColor: moduleMeta.people.border,
+                                        backgroundColor: moduleMeta.people.bg,
+                                        color: moduleMeta.people.color,
+                                      }}
+                                    >
+                                      <Users size={11} />
+                                      {conn.people
+                                        .map((p) => p.name)
+                                        .join(", ")}
+                                    </span>
+                                  )}
+                                </div>
+                              )}
+                            </div>
+                          </div>
+
+                          {/* Ações: Editar e Excluir */}
+                          <div className="flex items-center gap-1 shrink-0">
+                            <button
+                              onClick={() => handleOpenEdit(task)}
+                              title="Editar evento"
+                              className={`flex h-8 w-8 items-center justify-center rounded-xl border transition cursor-pointer ${
+                                dark
+                                  ? "border-white/10 bg-white/5 text-zinc-300 hover:bg-white/10 hover:text-white"
+                                  : "border-zinc-200 bg-white text-zinc-600 hover:bg-zinc-100 hover:text-zinc-900"
+                              }`}
+                            >
+                              <Pencil size={13} />
+                            </button>
+                            <button
+                              onClick={() => onDeleteTask(task.id)}
+                              title="Excluir evento"
+                              className={`flex h-8 w-8 items-center justify-center rounded-xl border transition cursor-pointer ${
+                                dark
+                                  ? "border-white/10 bg-white/5 text-red-400 hover:bg-red-500/15 hover:border-red-500/30"
+                                  : "border-zinc-200 bg-white text-red-500 hover:bg-red-50 hover:border-red-200"
+                              }`}
+                            >
+                              <Trash2 size={13} />
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* MODAL DE CRIAÇÃO E EDIÇÃO */}
       <CalendarEventModal

@@ -21,6 +21,7 @@ import {
   Trash2,
   X,
   Clock,
+  Flag,
 } from "lucide-react";
 
 import { Folder, Task, Theme, Topic } from "@/types";
@@ -66,6 +67,130 @@ interface QuickVaultItem {
   date: string;
 }
 
+interface HolidayItem {
+  dateKey: string;
+  name: string;
+  type: "nacional" | "regional";
+}
+
+const REGIONAL_HOLIDAYS: Record<string, Record<string, string>> = {
+  GO: {
+    "07-26": "Fundação de Goiás",
+    "10-24": "Pedra Fundamental de Goiânia",
+  },
+  SP: {
+    "01-25": "Aniversário de São Paulo",
+    "07-09": "Revolução Constitucionalista",
+  },
+  RJ: {
+    "01-20": "Dia de São Sebastião",
+    "04-23": "Dia de São Jorge",
+  },
+  MG: {
+    "04-21": "Data Magna de Minas Gerais",
+  },
+  DF: {
+    "04-21": "Fundação de Brasília",
+    "11-30": "Dia do Evangélico (DF)",
+  },
+  BA: {
+    "07-02": "Independência da Bahia",
+  },
+  PR: {
+    "12-19": "Emancipação do Paraná",
+  },
+  SC: {
+    "08-11": "Dia de Santa Catarina",
+  },
+  RS: {
+    "09-20": "Revolução Farroupilha",
+  },
+  PE: {
+    "03-06": "Revolução Pernambucana",
+    "06-24": "São João",
+  },
+  CE: {
+    "03-19": "Dia de São José",
+    "03-25": "Data Magna do Ceará",
+  },
+};
+
+function getEasterDate(year: number): Date {
+  const a = year % 19;
+  const b = Math.floor(year / 100);
+  const c = year % 100;
+  const d = Math.floor(b / 4);
+  const e = b % 4;
+  const f = Math.floor((b + 8) / 25);
+  const g = Math.floor((b - f + 1) / 3);
+  const h = (19 * a + b - d - g + 15) % 30;
+  const i = Math.floor(c / 4);
+  const k = c % 4;
+  const l = (32 + 2 * e + 2 * i - h - k) % 7;
+  const m = Math.floor((a + 11 * h + 22 * l) / 451);
+  const month = Math.floor((h + l - 7 * m + 114) / 31) - 1;
+  const day = ((h + l - 7 * m + 114) % 31) + 1;
+  return new Date(year, month, day);
+}
+
+function getHolidaysForYear(year: number, stateCode: string): HolidayItem[] {
+  const map: Record<string, HolidayItem> = {};
+
+  const fixedNational: Record<string, string> = {
+    "01-01": "Confraternização Universal",
+    "04-21": "Tiradentes",
+    "05-01": "Dia do Trabalho",
+    "09-07": "Independência do Brasil",
+    "10-12": "Nossa Sra. Aparecida",
+    "11-02": "Finados",
+    "11-15": "Proclamação da República",
+    "11-20": "Consciência Negra",
+    "12-25": "Natal",
+  };
+
+  for (const [mmdd, name] of Object.entries(fixedNational)) {
+    const key = `${year}-${mmdd}`;
+    map[key] = { dateKey: key, name, type: "nacional" };
+  }
+
+  const easter = getEasterDate(year);
+  const addDays = (base: Date, days: number) => {
+    const d = new Date(base);
+    d.setDate(d.getDate() + days);
+    return toKey(d);
+  };
+
+  const movable: Array<[string, string]> = [
+    [addDays(easter, -48), "Segunda de Carnaval"],
+    [addDays(easter, -47), "Carnaval"],
+    [addDays(easter, -2), "Sexta-Feira Santa"],
+    [toKey(easter), "Páscoa"],
+    [addDays(easter, 60), "Corpus Christi"],
+  ];
+
+  for (const [key, name] of movable) {
+    map[key] = { dateKey: key, name, type: "nacional" };
+  }
+
+  const regional = REGIONAL_HOLIDAYS[stateCode];
+  if (regional) {
+    for (const [mmdd, name] of Object.entries(regional)) {
+      const fullKey = `${year}-${mmdd}`;
+      if (map[fullKey]) {
+        map[fullKey] = {
+          dateKey: fullKey,
+          name: `${map[fullKey].name} • ${name}`,
+          type: "regional",
+        };
+      } else {
+        map[fullKey] = { dateKey: fullKey, name, type: "regional" };
+      }
+    }
+  }
+
+  return Object.values(map);
+}
+
 export default function Home({
   tasks = [],
   topics = [],
@@ -85,30 +210,69 @@ export default function Home({
   const colorPreset = settings?.colorPreset || "matcha-espresso";
   const todayKey = toKey(new Date());
 
-  // Filtragem corrigida lendo `dueDate` (e fallback para `date`) + busca do próximo evento futuro
-  const { todaysTasks, completedCount, progressPercent, nextUpcomingTask } =
+  const [selectedState, setSelectedState] = useState<string>("GO");
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const savedUf = localStorage.getItem("your_mind_holiday_state");
+      if (savedUf) setSelectedState(savedUf);
+    }
+  }, []);
+
+  // Próximo feriado (hoje ou futuro, sincronizado com o estado configurado no Calendário)
+  const nextHoliday = useMemo(() => {
+    const currentYear = new Date().getFullYear();
+    const allHolidays = [
+      ...getHolidaysForYear(currentYear, selectedState),
+      ...getHolidaysForYear(currentYear + 1, selectedState),
+    ].sort((a, b) => a.dateKey.localeCompare(b.dateKey));
+
+    const found = allHolidays.find((h) => h.dateKey >= todayKey) || null;
+    if (!found) return null;
+
+    const todayDate = new Date(todayKey + "T00:00:00");
+    const holidayDate = new Date(found.dateKey + "T00:00:00");
+    const diffDays = Math.round(
+      (holidayDate.getTime() - todayDate.getTime()) / (1000 * 60 * 60 * 24)
+    );
+
+    return { ...found, diffDays };
+  }, [todayKey, selectedState]);
+
+  // Tarefas de hoje + lista de próximos eventos futuros
+  const { todaysTasks, completedCount, progressPercent, upcomingTasks } =
     useMemo(() => {
       const getTaskDate = (t: Task & { date?: string }) =>
         (t.dueDate || t.date || "").slice(0, 10);
 
-      const filtered = tasks.filter((t) => getTaskDate(t) === todayKey);
+      const getTaskTime = (t: Task & { time?: string }) => t.time || "99:99";
+
+      const filtered = tasks
+        .filter((t) => getTaskDate(t) === todayKey)
+        .sort((a, b) => getTaskTime(a).localeCompare(getTaskTime(b)));
+
       const completed = filtered.filter((t) => t.completed).length;
       const percent =
         filtered.length > 0 ? Math.round((completed / filtered.length) * 100) : 0;
 
-      // Próximo evento futuro (após hoje, não concluído, ordenado pela data mais próxima)
+      // Próximos eventos futuros (após hoje, não concluídos, ordenados por data e hora)
       const upcoming = tasks
         .filter((t) => {
           const d = getTaskDate(t);
           return d > todayKey && !t.completed;
         })
-        .sort((a, b) => getTaskDate(a).localeCompare(getTaskDate(b)))[0] || null;
+        .sort((a, b) => {
+          const dateDiff = getTaskDate(a).localeCompare(getTaskDate(b));
+          if (dateDiff !== 0) return dateDiff;
+          return getTaskTime(a).localeCompare(getTaskTime(b));
+        })
+        .slice(0, 3);
 
       return {
         todaysTasks: filtered,
         completedCount: completed,
         progressPercent: percent,
-        nextUpcomingTask: upcoming,
+        upcomingTasks: upcoming,
       };
     }, [tasks, todayKey]);
 
@@ -605,7 +769,7 @@ export default function Home({
           })}
         </div>
 
-        {/* GRADE INFERIOR: ATIVIDADES RECENTES E AGENDA DE HOJE */}
+        {/* GRADE INFERIOR: ATIVIDADES RECENTES E AGENDA */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
           {/* 1. Trabalhos & Códigos Recentes */}
           <div
@@ -782,12 +946,13 @@ export default function Home({
             )}
           </div>
 
-          {/* 3. AGENDA & COMPROMISSOS DE HOJE + PRÓXIMO EVENTO */}
+          {/* 3. AGENDA: HOJE + PRÓXIMOS EVENTOS + PRÓXIMO FERIADO */}
           <div
             className={`rounded-[2rem] border p-6 sm:p-7 ${ui.panel} space-y-4 flex flex-col justify-between`}
           >
-            <div>
-              <div className="flex items-center justify-between mb-3">
+            <div className="space-y-3.5">
+              {/* Cabeçalho */}
+              <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2.5">
                   <div
                     className="p-2.5 rounded-xl"
@@ -825,7 +990,7 @@ export default function Home({
 
               {/* Barra visual de progresso diário */}
               {todaysTasks.length > 0 && (
-                <div className="mb-3 h-1.5 w-full overflow-hidden rounded-full bg-zinc-500/15">
+                <div className="h-1.5 w-full overflow-hidden rounded-full bg-zinc-500/15">
                   <div
                     className="h-full rounded-full transition-all duration-500"
                     style={{
@@ -836,21 +1001,21 @@ export default function Home({
                 </div>
               )}
 
+              {/* Lista de hoje */}
               {todaysTasks.length === 0 ? (
                 <button
                   type="button"
                   onClick={() => onOpenTaskModal(todayKey)}
-                  className={`w-full rounded-2xl border border-dashed px-4 py-6 text-center text-xs text-zinc-400 transition-colors cursor-pointer ${
+                  className={`w-full rounded-2xl border border-dashed px-4 py-4 text-center text-xs text-zinc-400 transition-colors cursor-pointer ${
                     dark
                       ? "border-white/10 hover:border-white/25 hover:bg-white/2"
                       : "border-zinc-300/60 hover:border-zinc-400 hover:bg-zinc-50"
                   }`}
                 >
-                  Nenhum compromisso para hoje. Clique aqui ou no (+) para
-                  adicionar!
+                  Nenhum compromisso para hoje. Clique no (+) para adicionar!
                 </button>
               ) : (
-                <div className="space-y-2 max-h-[155px] overflow-y-auto thin-scroll pr-1">
+                <div className="space-y-1.5 max-h-[120px] overflow-y-auto thin-scroll pr-1">
                   {todaysTasks.map((task) => {
                     const taskWithExtra = task as Task & {
                       text?: string;
@@ -859,7 +1024,7 @@ export default function Home({
                     return (
                       <div
                         key={task.id}
-                        className={`group flex items-center justify-between w-full rounded-2xl border p-3 transition-all ${
+                        className={`group flex items-center justify-between w-full rounded-xl border px-3 py-2 transition-all ${
                           dark
                             ? "border-white/10 bg-white/2 hover:bg-white/5"
                             : "border-zinc-200 bg-zinc-50 hover:bg-zinc-100"
@@ -872,23 +1037,23 @@ export default function Home({
                           >
                             {task.completed ? (
                               <CheckCircle2
-                                size={17}
+                                size={16}
                                 style={{ color: primaryColor }}
                               />
                             ) : (
-                              <Circle size={17} className="text-zinc-400" />
+                              <Circle size={16} className="text-zinc-400" />
                             )}
                           </button>
-                          <div className="min-w-0 flex-1">
+                          <div className="min-w-0 flex-1 flex items-center justify-between gap-2">
                             <span
-                              className={`block truncate text-xs font-bold ${
+                              className={`truncate text-xs font-bold ${
                                 task.completed ? "line-through opacity-50" : ""
                               } ${titleColor}`}
                             >
                               {task.title || taskWithExtra.text}
                             </span>
                             {taskWithExtra.time && (
-                              <span className="block text-[10px] text-zinc-400 font-medium">
+                              <span className="text-[10px] text-zinc-400 font-semibold shrink-0">
                                 {taskWithExtra.time}
                               </span>
                             )}
@@ -900,32 +1065,108 @@ export default function Home({
                 </div>
               )}
 
-              {/* Destaque do Próximo Evento Futuro */}
-              {nextUpcomingTask && (
-                <div
-                  onClick={() => onNavigate("calendar")}
-                  className={`mt-3 flex items-center justify-between gap-2 rounded-2xl border px-3.5 py-2.5 cursor-pointer transition-colors ${
-                    dark
-                      ? "border-white/10 bg-white/[0.03] hover:bg-white/[0.06]"
-                      : "border-zinc-200/80 bg-zinc-50 hover:bg-zinc-100"
-                  }`}
-                >
-                  <div className="flex items-center gap-2 min-w-0">
-                    <Clock
-                      size={13}
-                      className="shrink-0"
-                      style={{ color: primaryColor }}
-                    />
-                    <div className="min-w-0">
-                      <span className="block text-[10px] font-bold uppercase tracking-wider text-zinc-400">
-                        Próximo evento • {formatShortDate(nextUpcomingTask.dueDate)}
-                      </span>
-                      <span className={`block truncate text-xs font-bold ${titleColor}`}>
-                        {nextUpcomingTask.title}
-                      </span>
-                    </div>
+              {/* BLOCO SEPARADO 1: PRÓXIMOS EVENTOS */}
+              <div className="space-y-2 pt-2 border-t border-zinc-500/10">
+                <div className="flex items-center justify-between">
+                  <span className="flex items-center gap-1.5 text-[10px] font-black uppercase tracking-wider text-zinc-400">
+                    <Clock size={11} style={{ color: primaryColor }} />
+                    Próximos eventos
+                  </span>
+                  {upcomingTasks.length > 0 && (
+                    <span className="text-[10px] font-bold text-zinc-500">
+                      {upcomingTasks.length}{" "}
+                      {upcomingTasks.length === 1 ? "item" : "itens"}
+                    </span>
+                  )}
+                </div>
+
+                {upcomingTasks.length === 0 ? (
+                  <p className="text-[11px] text-zinc-500 italic px-1">
+                    Nenhum evento futuro agendado.
+                  </p>
+                ) : (
+                  <div className="space-y-1.5">
+                    {upcomingTasks.map((task) => {
+                      const taskExtra = task as Task & {
+                        text?: string;
+                        date?: string;
+                        time?: string;
+                      };
+                      const taskDate = task.dueDate || taskExtra.date;
+                      return (
+                        <div
+                          key={task.id}
+                          onClick={() => onNavigate("calendar")}
+                          className={`flex items-center justify-between gap-2 rounded-xl border px-3 py-2 cursor-pointer transition-colors ${
+                            dark
+                              ? "border-white/10 bg-white/[0.02] hover:bg-white/[0.06]"
+                              : "border-zinc-200/80 bg-zinc-50 hover:bg-zinc-100"
+                          }`}
+                        >
+                          <span
+                            className={`truncate text-xs font-bold ${titleColor}`}
+                          >
+                            {task.title || taskExtra.text}
+                          </span>
+                          <div className="flex items-center gap-1.5 shrink-0">
+                            {taskExtra.time && (
+                              <span className="text-[10px] font-medium text-zinc-400">
+                                {taskExtra.time}
+                              </span>
+                            )}
+                            <span
+                              className="rounded-md px-1.5 py-0.5 text-[10px] font-extrabold"
+                              style={{
+                                backgroundColor: withAlpha(primaryColor, 0.14),
+                                color: primaryColor,
+                              }}
+                            >
+                              {formatShortDate(taskDate)}
+                            </span>
+                          </div>
+                        </div>
+                      );
+                    })}
                   </div>
-                  <ArrowUpRight size={13} className="text-zinc-400 shrink-0" />
+                )}
+              </div>
+
+              {/* BLOCO SEPARADO 2: PRÓXIMO FERIADO */}
+              {nextHoliday && (
+                <div className="space-y-1.5 pt-2 border-t border-zinc-500/10">
+                  <span className="flex items-center gap-1.5 text-[10px] font-black uppercase tracking-wider text-amber-400">
+                    <Flag size={11} />
+                    Próximo feriado
+                  </span>
+
+                  <div
+                    onClick={() => onNavigate("calendar")}
+                    className={`flex items-center justify-between gap-2.5 rounded-xl border px-3 py-2.5 cursor-pointer transition-colors ${
+                      dark
+                        ? "border-amber-500/25 bg-amber-500/[0.06] hover:bg-amber-500/10"
+                        : "border-amber-400/50 bg-amber-50/80 hover:bg-amber-100/80"
+                    }`}
+                  >
+                    <div className="min-w-0">
+                      <p className="truncate text-xs font-extrabold text-amber-400">
+                        {nextHoliday.name}
+                      </p>
+                      <p className="text-[10px] font-medium text-amber-300/80">
+                        {nextHoliday.diffDays === 0
+                          ? "É hoje!"
+                          : nextHoliday.diffDays === 1
+                          ? "Amanhã"
+                          : `Em ${nextHoliday.diffDays} dias`}{" "}
+                        •{" "}
+                        {nextHoliday.type === "nacional"
+                          ? "Nacional"
+                          : selectedState}
+                      </p>
+                    </div>
+                    <span className="shrink-0 rounded-lg bg-amber-500/20 px-2 py-1 text-[11px] font-black text-amber-400">
+                      {formatShortDate(nextHoliday.dateKey)}
+                    </span>
+                  </div>
                 </div>
               )}
             </div>

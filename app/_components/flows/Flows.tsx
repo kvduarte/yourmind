@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useState, useMemo } from "react";
 import {
   GitFork,
   Code2,
@@ -8,20 +8,23 @@ import {
   Plus,
   Pencil,
   Trash2,
-  CheckCircle2,
   CalendarDays,
   Copy,
   Link2,
   FolderPlus,
-  ChevronRight,
   Terminal,
   Network,
-  Workflow,
-  Cpu,
+  Search,
+  LayoutGrid,
+  List,
+  ArrowUpDown,
+  ArrowUpRight,
+  Layers,
+  X,
 } from "lucide-react";
 
 import { Folder, Theme, Topic } from "@/types";
-import { FlowKind } from "@/lib/nav";
+import { FlowKind, folderHex } from "@/lib/nav";
 import {
   CURATED_PALETTES,
   DEFAULT_ACCENT,
@@ -59,26 +62,28 @@ interface FlowsProps {
 
 const KINDS: {
   id: FlowKind;
-  title: string;
-  text: string;
+  label: string;
+  shortLabel: string;
+  description: string;
   icon: React.ElementType;
-  badge: string;
 }[] = [
   {
     id: "general",
-    title: "Normal (Fluxograma)",
-    text: "Planejamento, ideias e conexões estruturadas em nós lógicos.",
+    label: "Fluxograma Lógico",
+    shortLabel: "Normal",
+    description: "Mapas mentais, processos e nós de conexão visual.",
     icon: Network,
-    badge: "Nós & Relações",
   },
   {
     id: "code",
-    title: "Programação (Código)",
-    text: "Arquitetura de arquivos, blocos executáveis e lógica de sistema.",
+    label: "Arquitetura & Código",
+    shortLabel: "Programação",
+    description: "Estrutura de arquivos, módulos e blocos técnicos.",
     icon: Terminal,
-    badge: "Arquitetura & Stack",
   },
 ];
+
+type SortOption = "recent" | "alpha" | "dueDate";
 
 export default function Flows({
   theme,
@@ -117,464 +122,978 @@ export default function Flows({
       ? activePalette.gradient
       : primaryColor;
 
-  const isLightPrimary = isLightHex(primaryColor);
-  const safeIconColor = isLightPrimary && colorStyle === "solid" ? "#18181b" : "#ffffff";
+  const isLightBtn = isLightHex(primaryColor);
 
   const ui = getUi(dark);
   const titleColor = ui.title;
   const subtitleColor = ui.subtitle;
 
-  const kindTopics = topics.filter((topic) => (topic.kind ?? "general") === flowKind);
-  const visible = kindTopics.filter(
-    (topic) => !activeFolderId || topic.folderId === activeFolderId
+  // Estados locais de produtividade (Busca, Visualização e Ordenação)
+  const [searchQuery, setSearchQuery] = useState("");
+  const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
+  const [sortBy, setSortBy] = useState<SortOption>("recent");
+
+  const getResolvedFolderColor = (color?: string) => {
+    if (!color) return primaryColor;
+    if (color.startsWith("#")) return color;
+    return folderHex(color);
+  };
+
+  // Métricas gerais por tipo
+  const stats = useMemo(() => {
+    const generalCount = topics.filter(
+      (t) => (t.kind ?? "general") === "general"
+    ).length;
+    const codeCount = topics.filter((t) => t.kind === "code").length;
+    const totalNodes = topics.reduce(
+      (acc, t) => acc + (t.nodes?.length || 0),
+      0
+    );
+    return { generalCount, codeCount, totalNodes };
+  }, [topics]);
+
+  const kindTopics = useMemo(
+    () => topics.filter((topic) => (topic.kind ?? "general") === flowKind),
+    [topics, flowKind]
   );
-  const activeFolder = folders.find((folder) => folder.id === activeFolderId);
+
+  const visibleTopics = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase();
+
+    const filtered = kindTopics.filter((topic) => {
+      const matchesFolder =
+        !activeFolderId || topic.folderId === activeFolderId;
+      if (!matchesFolder) return false;
+
+      if (!q) return true;
+      const folderName =
+        folders.find((f) => f.id === topic.folderId)?.name.toLowerCase() || "";
+      return (
+        topic.name.toLowerCase().includes(q) || folderName.includes(q)
+      );
+    });
+
+    if (sortBy === "alpha") {
+      return [...filtered].sort((a, b) => a.name.localeCompare(b.name));
+    }
+    if (sortBy === "dueDate") {
+      return [...filtered].sort((a, b) =>
+        (a.dueDate || "9999-12-31").localeCompare(b.dueDate || "9999-12-31")
+      );
+    }
+    return [...filtered].reverse();
+  }, [kindTopics, activeFolderId, searchQuery, folders, sortBy]);
+
+  const activeFolder = folders.find((f) => f.id === activeFolderId);
+  const currentKindMeta = KINDS.find((k) => k.id === flowKind) || KINDS[0];
 
   return (
     <div className="thin-scroll h-full overflow-y-auto select-none">
-      <div className="mx-auto max-w-6xl space-y-8 p-6 sm:p-10 relative">
-        
-        {/* BRILHO ATMOSFÉRICO DE FUNDO */}
+      <div className="mx-auto max-w-6xl space-y-6 p-6 sm:p-10 relative">
+        {/* BRILHO ATMOSFÉRICO */}
         <div
-          className="absolute -left-20 -top-10 h-80 w-80 rounded-full opacity-15 blur-[120px] pointer-events-none z-0"
+          className="pointer-events-none absolute -left-24 -top-16 h-80 w-80 rounded-full opacity-20 blur-[120px] z-0"
           style={{ background: primaryFill }}
         />
 
-        {/* HEADER COM VIBE DE FLUXOGRAMA & NÓS */}
-        <div
-          className={`relative overflow-hidden rounded-[2rem] border p-6 sm:p-8 transition-all duration-500 shadow-xl z-10 ${
+        {/* 1. CABEÇALHO EXECUTIVO COM TOPOLOGIA SVG SUTIL */}
+        <header
+          className={`relative overflow-hidden rounded-[2rem] border p-6 sm:p-8 shadow-xl transition-all z-10 ${
             dark
-              ? "border-white/10 bg-zinc-950 text-zinc-100"
-              : "border-zinc-200 bg-white text-zinc-900 shadow-zinc-200/50"
+              ? "border-white/10 bg-zinc-950/90 text-zinc-100 backdrop-blur-2xl"
+              : "border-zinc-200/80 bg-white/95 text-zinc-900 shadow-zinc-200/50 backdrop-blur-2xl"
           }`}
         >
-          {/* Elementos gráficos decorativos simulando nós e conexões no fundo do header */}
-          <div className="absolute right-6 top-1/2 -translate-y-1/2 hidden lg:flex items-center gap-3 opacity-20 pointer-events-none">
-            <div className={`flex flex-col items-center gap-2 border border-dashed rounded-xl p-3 ${dark ? "border-white/30" : "border-zinc-400"}`}>
-              <Workflow size={18} style={{ color: primaryColor }} />
+          {/* Malha topológica decorativa à direita */}
+          <svg
+            aria-hidden="true"
+            viewBox="0 0 320 140"
+            className="pointer-events-none absolute right-0 top-0 h-full w-80 opacity-[0.14] hidden md:block"
+          >
+            <path
+              d="M30 35 H115 V70 H205 V35 H290 M115 70 V105 H240"
+              fill="none"
+              stroke={primaryColor}
+              strokeWidth="1.5"
+              strokeDasharray="4 4"
+            />
+            <rect
+              x="14"
+              y="23"
+              width="32"
+              height="24"
+              rx="6"
+              fill="none"
+              stroke={primaryColor}
+              strokeWidth="1.5"
+            />
+            <rect
+              x="99"
+              y="58"
+              width="32"
+              height="24"
+              rx="6"
+              fill={primaryColor}
+            />
+            <rect
+              x="189"
+              y="23"
+              width="32"
+              height="24"
+              rx="6"
+              fill="none"
+              stroke={primaryColor}
+              strokeWidth="1.5"
+            />
+            <rect
+              x="224"
+              y="93"
+              width="32"
+              height="24"
+              rx="6"
+              fill="none"
+              stroke={primaryColor}
+              strokeWidth="1.5"
+            />
+          </svg>
+
+          <div
+            className="pointer-events-none absolute -right-12 -top-12 h-60 w-60 rounded-full opacity-20 blur-[90px]"
+            style={{ background: primaryFill }}
+          />
+
+          <div className="relative z-10 flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
+            <div className="space-y-2.5 max-w-xl">
+              <div className="flex flex-wrap items-center gap-2">
+                <span
+                  className="inline-flex items-center gap-1.5 rounded-full border border-white/15 px-3 py-1 text-xs font-bold tracking-wide backdrop-blur-md"
+                  style={{
+                    backgroundColor: withAlpha(primaryColor, 0.15),
+                    color: primaryColor,
+                  }}
+                >
+                  <Network size={13} />
+                  <span>Workspace Visual</span>
+                </span>
+
+                <span
+                  className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-bold ${
+                    dark
+                      ? "border-white/10 bg-white/[0.04] text-zinc-400"
+                      : "border-zinc-200 bg-zinc-100/80 text-zinc-600"
+                  }`}
+                >
+                  <Layers size={12} style={{ color: primaryColor }} />
+                  <span>
+                    {topics.length}{" "}
+                    {topics.length === 1 ? "projeto" : "projetos"} •{" "}
+                    {stats.totalNodes} nós
+                  </span>
+                </span>
+              </div>
+
+              <h1
+                className={`text-3xl sm:text-4xl font-black tracking-tight ${titleColor}`}
+              >
+                Fluxogramas
+              </h1>
+
+              <p className={`text-xs sm:text-sm font-medium ${subtitleColor}`}>
+                {currentKindMeta.description}
+              </p>
             </div>
-            <div className={`w-8 h-0.5 ${dark ? "bg-white/30" : "bg-zinc-400"}`} />
-            <div className={`flex flex-col items-center gap-2 border border-dashed rounded-xl p-3 ${dark ? "border-white/30" : "border-zinc-400"}`}>
-              <Cpu size={18} style={{ color: primaryColor }} />
+
+            {/* Ações Principais do Header */}
+            <div className="flex flex-wrap items-center gap-2.5 shrink-0">
+              <button
+                onClick={onCreateFolder}
+                className={`inline-flex items-center gap-2 rounded-xl border px-4 py-2.5 text-xs font-bold transition-all cursor-pointer ${
+                  dark
+                    ? "border-white/15 bg-white/[0.04] text-zinc-200 hover:bg-white/[0.08]"
+                    : "border-zinc-200 bg-zinc-50 text-zinc-700 hover:bg-zinc-100"
+                }`}
+              >
+                <FolderPlus size={15} style={{ color: primaryColor }} />
+                <span>Nova Pasta</span>
+              </button>
+
+              <button
+                onClick={onCreateTopic}
+                className={`inline-flex items-center gap-2 rounded-xl px-4 py-2.5 text-xs font-black shadow-lg transition-all hover:scale-[1.02] active:scale-95 cursor-pointer ${
+                  isLightBtn ? "text-zinc-950" : "text-white"
+                }`}
+                style={{ background: primaryFill }}
+              >
+                <Plus size={16} strokeWidth={2.8} />
+                <span>
+                  {flowKind === "code" ? "Novo Projeto" : "Novo Fluxograma"}
+                </span>
+              </button>
             </div>
-            <div className={`w-8 h-0.5 ${dark ? "bg-white/30" : "bg-zinc-400"}`} />
-            <div className={`flex flex-col items-center gap-2 border rounded-xl p-3 shadow-sm`} style={{ borderColor: primaryColor, backgroundColor: withAlpha(primaryColor, 0.15) }}>
-              <Network size={18} style={{ color: primaryColor }} />
+          </div>
+        </header>
+
+        {/* 2. BARRA DE COMANDO: SELETOR DE MODO + BUSCA + ORDENAÇÃO + VIEW */}
+        <section
+          className={`relative z-10 flex flex-col gap-3 rounded-[1.6rem] border p-3.5 sm:p-4 shadow-md ${
+            dark
+              ? "border-white/10 bg-zinc-950/80 backdrop-blur-xl"
+              : "border-zinc-200/80 bg-white/90 backdrop-blur-xl"
+          }`}
+        >
+          <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+            {/* Segmented Control de Tipo (Normal vs Programação) */}
+            <div
+              className={`grid grid-cols-2 sm:inline-flex rounded-xl border p-1 ${
+                dark
+                  ? "border-white/10 bg-zinc-900/90"
+                  : "border-zinc-200 bg-zinc-100/80"
+              }`}
+            >
+              {KINDS.map((kind) => {
+                const Icon = kind.icon;
+                const active = flowKind === kind.id;
+                const count =
+                  kind.id === "general" ? stats.generalCount : stats.codeCount;
+
+                return (
+                  <button
+                    key={kind.id}
+                    onClick={() => onFlowKind(kind.id)}
+                    className={`flex items-center justify-center gap-2 rounded-lg px-4 py-2 text-xs font-extrabold transition-all cursor-pointer ${
+                      active
+                        ? isLightBtn
+                          ? "text-zinc-950 shadow-sm"
+                          : "text-white shadow-sm"
+                        : dark
+                        ? "text-zinc-400 hover:text-zinc-100"
+                        : "text-zinc-600 hover:text-zinc-900"
+                    }`}
+                    style={active ? { background: primaryFill } : undefined}
+                  >
+                    <Icon size={14} />
+                    <span>{kind.label}</span>
+                    <span
+                      className={`ml-0.5 rounded-full px-1.5 py-0.2 text-[10px] font-black ${
+                        active
+                          ? isLightBtn
+                            ? "bg-black/15 text-zinc-950"
+                            : "bg-white/20 text-white"
+                          : dark
+                          ? "bg-white/10 text-zinc-400"
+                          : "bg-zinc-200 text-zinc-600"
+                      }`}
+                    >
+                      {count}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Busca, Ordenação e Alternador Grid/Lista */}
+            <div className="flex flex-wrap items-center gap-2 flex-1 lg:justify-end">
+              {/* Campo de Busca */}
+              <div
+                className={`flex items-center gap-2 rounded-xl border px-3 py-2 text-xs flex-1 sm:flex-initial sm:w-64 transition-colors ${
+                  dark
+                    ? "border-white/10 bg-zinc-900/70 focus-within:border-white/25"
+                    : "border-zinc-200 bg-zinc-50 focus-within:border-zinc-400"
+                }`}
+              >
+                <Search size={14} className="text-zinc-400 shrink-0" />
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Buscar projeto ou pasta..."
+                  className={`w-full bg-transparent outline-none font-medium ${titleColor}`}
+                />
+                {searchQuery && (
+                  <button
+                    onClick={() => setSearchQuery("")}
+                    className="text-zinc-400 hover:text-zinc-200 cursor-pointer"
+                  >
+                    <X size={13} />
+                  </button>
+                )}
+              </div>
+
+              {/* Ordenação */}
+              <div
+                className={`flex items-center gap-1.5 rounded-xl border px-3 py-2 text-xs font-bold ${
+                  dark
+                    ? "border-white/10 bg-zinc-900/70 text-zinc-300"
+                    : "border-zinc-200 bg-zinc-50 text-zinc-700"
+                }`}
+              >
+                <ArrowUpDown size={13} style={{ color: primaryColor }} />
+                <select
+                  value={sortBy}
+                  onChange={(e) => setSortBy(e.target.value as SortOption)}
+                  aria-label="Ordenar projetos"
+                  className="bg-transparent outline-none cursor-pointer text-xs font-bold"
+                >
+                  <option
+                    value="recent"
+                    className={dark ? "bg-zinc-900" : "bg-white"}
+                  >
+                    Mais recentes
+                  </option>
+                  <option
+                    value="alpha"
+                    className={dark ? "bg-zinc-900" : "bg-white"}
+                  >
+                    Ordem A–Z
+                  </option>
+                  <option
+                    value="dueDate"
+                    className={dark ? "bg-zinc-900" : "bg-white"}
+                  >
+                    Prazo
+                  </option>
+                </select>
+              </div>
+
+              {/* Alternador Grid / Lista */}
+              <div
+                className={`flex items-center rounded-xl border p-1 ${
+                  dark
+                    ? "border-white/10 bg-zinc-900/70"
+                    : "border-zinc-200 bg-zinc-50"
+                }`}
+              >
+                <button
+                  onClick={() => setViewMode("grid")}
+                  title="Visualização em grade"
+                  className={`flex h-7 w-7 items-center justify-center rounded-lg transition cursor-pointer ${
+                    viewMode === "grid"
+                      ? isLightBtn
+                        ? "text-zinc-950 shadow-xs"
+                        : "text-white shadow-xs"
+                      : "text-zinc-400 hover:text-zinc-200"
+                  }`}
+                  style={
+                    viewMode === "grid" ? { background: primaryFill } : undefined
+                  }
+                >
+                  <LayoutGrid size={14} />
+                </button>
+                <button
+                  onClick={() => setViewMode("list")}
+                  title="Visualização em lista"
+                  className={`flex h-7 w-7 items-center justify-center rounded-lg transition cursor-pointer ${
+                    viewMode === "list"
+                      ? isLightBtn
+                        ? "text-zinc-950 shadow-xs"
+                        : "text-white shadow-xs"
+                      : "text-zinc-400 hover:text-zinc-200"
+                  }`}
+                  style={
+                    viewMode === "list" ? { background: primaryFill } : undefined
+                  }
+                >
+                  <List size={14} />
+                </button>
+              </div>
             </div>
           </div>
 
-          <div className="absolute inset-0 opacity-[0.04] z-0 pointer-events-none" style={{ background: primaryFill }} />
+          {/* Barra de Pastas em Pílulas Interativas */}
+          <div className="flex items-center gap-2 overflow-x-auto thin-scroll pt-2 border-t border-zinc-500/10 pb-0.5">
+            <button
+              onClick={() => onSelectFolder(null)}
+              className={`inline-flex items-center gap-2 rounded-xl border px-3.5 py-2 text-xs font-bold transition-all shrink-0 cursor-pointer ${
+                !activeFolderId
+                  ? "shadow-xs"
+                  : dark
+                  ? "border-white/10 bg-white/[0.02] text-zinc-400 hover:border-white/20 hover:text-zinc-100"
+                  : "border-zinc-200 bg-zinc-50 text-zinc-600 hover:border-zinc-300 hover:text-zinc-900"
+              }`}
+              style={
+                !activeFolderId
+                  ? {
+                      borderColor: primaryColor,
+                      backgroundColor: withAlpha(primaryColor, 0.14),
+                      color: primaryColor,
+                    }
+                  : undefined
+              }
+            >
+              <FolderIcon size={13} />
+              <span>Todas as pastas</span>
+              <span className="rounded-md bg-black/10 dark:bg-white/10 px-1.5 py-0.2 text-[10px] font-extrabold">
+                {kindTopics.length}
+              </span>
+            </button>
 
-          <div className="relative z-10 flex flex-col md:flex-row md:items-center md:justify-between gap-6">
-            <div className="space-y-2">
+            {folders.map((folder) => {
+              const active = activeFolderId === folder.id;
+              const count = kindTopics.filter(
+                (t) => t.folderId === folder.id
+              ).length;
+              const fColor = getResolvedFolderColor(folder.color);
+
+              return (
+                <div
+                  key={folder.id}
+                  className={`group inline-flex items-center rounded-xl border transition-all shrink-0 ${
+                    active
+                      ? "shadow-xs"
+                      : dark
+                      ? "border-white/10 bg-white/[0.02] hover:border-white/20"
+                      : "border-zinc-200 bg-zinc-50 hover:border-zinc-300"
+                  }`}
+                  style={
+                    active
+                      ? {
+                          borderColor: fColor,
+                          backgroundColor: withAlpha(fColor, 0.15),
+                        }
+                      : undefined
+                  }
+                >
+                  <button
+                    onClick={() => onSelectFolder(folder.id)}
+                    className={`flex items-center gap-2 px-3.5 py-2 text-xs font-bold cursor-pointer ${
+                      active
+                        ? ""
+                        : dark
+                        ? "text-zinc-300 hover:text-white"
+                        : "text-zinc-700 hover:text-zinc-950"
+                    }`}
+                    style={active ? { color: fColor } : undefined}
+                  >
+                    <span
+                      className="h-2.5 w-2.5 rounded-full shrink-0"
+                      style={{ backgroundColor: fColor }}
+                    />
+                    <span className="max-w-[140px] truncate">{folder.name}</span>
+                    <span className="rounded-md bg-black/10 dark:bg-white/10 px-1.5 py-0.2 text-[10px] font-extrabold opacity-80">
+                      {count}
+                    </span>
+                  </button>
+
+                  {/* Controles rápidos da pasta no hover */}
+                  <div className="hidden group-hover:flex items-center pr-2 gap-0.5">
+                    <button
+                      onClick={() => onEditFolder(folder)}
+                      title="Renomear ou alterar cor"
+                      className="rounded-lg p-1 text-zinc-400 hover:bg-white/10 hover:text-zinc-100 cursor-pointer"
+                    >
+                      <Pencil size={11} />
+                    </button>
+                    <button
+                      onClick={() => onDeleteFolder(folder)}
+                      title="Excluir pasta"
+                      className="rounded-lg p-1 text-zinc-400 hover:bg-red-500/20 hover:text-red-400 cursor-pointer"
+                    >
+                      <Trash2 size={11} />
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+
+            <button
+              onClick={onCreateFolder}
+              title="Criar nova pasta"
+              className={`inline-flex items-center gap-1.5 rounded-xl border border-dashed px-3 py-2 text-xs font-bold transition-colors shrink-0 cursor-pointer ${
+                dark
+                  ? "border-white/15 text-zinc-400 hover:border-white/30 hover:text-zinc-200"
+                  : "border-zinc-300 text-zinc-500 hover:border-zinc-400 hover:text-zinc-900"
+              }`}
+            >
+              <Plus size={13} />
+              <span>Pasta</span>
+            </button>
+          </div>
+        </section>
+
+        {/* 3. ÁREA DE PROJETOS */}
+        <section className="space-y-4 relative z-10">
+          {/* Sub-cabeçalho contextual */}
+          <div className="flex items-center justify-between px-1">
+            <div className="flex items-center gap-2 text-xs font-bold text-zinc-400">
+              <span className="uppercase tracking-wider text-[11px]">
+                {activeFolder ? activeFolder.name : "Todos os projetos"}
+              </span>
+              <span>•</span>
+              <span>
+                {visibleTopics.length}{" "}
+                {visibleTopics.length === 1 ? "encontrado" : "encontrados"}
+              </span>
+            </div>
+
+            {(activeFolderId || searchQuery) && (
+              <button
+                onClick={() => {
+                  onSelectFolder(null);
+                  setSearchQuery("");
+                }}
+                className="text-xs font-bold hover:underline cursor-pointer"
+                style={{ color: primaryColor }}
+              >
+                Limpar filtros
+              </button>
+            )}
+          </div>
+
+          {/* ESTADO VAZIO */}
+          {visibleTopics.length === 0 ? (
+            <div
+              className={`flex flex-col items-center justify-center rounded-[2rem] border border-dashed p-12 text-center ${
+                dark
+                  ? "border-white/15 bg-zinc-950/50"
+                  : "border-zinc-300 bg-white/70"
+              }`}
+            >
               <div
-                className="inline-flex items-center gap-2 rounded-full px-3.5 py-1 text-xs font-semibold tracking-wide shadow-xs backdrop-blur-md border border-white/10"
+                className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl shadow-sm"
                 style={{
                   backgroundColor: withAlpha(primaryColor, 0.15),
                   color: primaryColor,
                 }}
               >
-                <Network size={13} />
-                <span>Arquitetura & Nós de Conexão</span>
+                {flowKind === "code" ? (
+                  <Code2 size={26} />
+                ) : (
+                  <GitFork size={26} />
+                )}
               </div>
-              <h1 className={`text-3xl sm:text-4xl font-black tracking-tight ${titleColor}`}>
-                Fluxogramas
-              </h1>
-              <p className={`text-xs sm:text-sm font-medium ${subtitleColor} max-w-xl`}>
-                Estruture seus diagramas, ideias lógicas e códigos em um ambiente fluido, interligado e organizado.
+
+              <h3 className={`text-base font-black ${titleColor}`}>
+                {searchQuery
+                  ? "Nenhum resultado para sua busca"
+                  : `Nenhum ${
+                      flowKind === "code" ? "projeto de código" : "fluxograma"
+                    } aqui ainda`}
+              </h3>
+
+              <p className="mt-1 max-w-md text-xs text-zinc-400 leading-relaxed">
+                {searchQuery
+                  ? "Tente buscar por outro termo ou limpe os filtros ativos."
+                  : "Crie seu primeiro quadro para conectar ideias, mapear fluxos ou estruturar código."}
               </p>
+
+              <button
+                onClick={onCreateTopic}
+                className={`mt-5 inline-flex items-center gap-2 rounded-xl px-5 py-2.5 text-xs font-black shadow-md transition-transform hover:scale-[1.02] cursor-pointer ${
+                  isLightBtn ? "text-zinc-950" : "text-white"
+                }`}
+                style={{ background: primaryFill }}
+              >
+                <Plus size={15} strokeWidth={2.8} />
+                <span>
+                  {flowKind === "code"
+                    ? "Criar primeiro projeto"
+                    : "Criar primeiro fluxograma"}
+                </span>
+              </button>
             </div>
+          ) : viewMode === "grid" ? (
+            /* VISUALIZAÇÃO EM GRADE (CARDS EXECUTIVOS) */
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
+              {visibleTopics.map((topic) => {
+                const folder = folders.find((f) => f.id === topic.folderId);
+                const folderColor = folder
+                  ? getResolvedFolderColor(folder.color)
+                  : primaryColor;
+                const nodesCount = topic.nodes?.length || 0;
+                const edgesCount =
+                  (topic as Topic & { edges?: unknown[] }).edges?.length || 0;
+                const codeCount =
+                  topic.nodes?.filter((n) => n.type === "code").length || 0;
 
-            {/* PASSOS INDICATIVOS COM VIBE DE FLUXO */}
-            <div className={`flex items-center gap-1.5 rounded-2xl border p-2 text-xs font-medium backdrop-blur-md shrink-0 ${
-              dark ? "border-white/10 bg-zinc-900/60" : "border-zinc-200 bg-zinc-50"
-            }`}>
-              <span className="flex items-center gap-1.5 px-2.5 py-1">
-                <span className="flex h-5 w-5 items-center justify-center rounded-full text-[10px] font-bold shadow-sm" style={{ background: primaryFill, color: safeIconColor }}>1</span>
-                <span className={titleColor}>Tipo</span>
-              </span>
-              <ChevronRight size={13} className="text-zinc-500" />
-              <span className="flex items-center gap-1.5 px-2.5 py-1">
-                <span className="flex h-5 w-5 items-center justify-center rounded-full text-[10px] font-bold shadow-sm" style={{ background: primaryFill, color: safeIconColor }}>2</span>
-                <span className={titleColor}>Pasta</span>
-              </span>
-              <ChevronRight size={13} className="text-zinc-500" />
-              <span className="flex items-center gap-1.5 px-2.5 py-1">
-                <span className="flex h-5 w-5 items-center justify-center rounded-full text-[10px] font-bold shadow-sm" style={{ background: primaryFill, color: safeIconColor }}>3</span>
-                <span className={titleColor}>Projeto</span>
-              </span>
-            </div>
-          </div>
-        </div>
-
-        {/* 1. TIPO DE FLUXOGRAMA */}
-        <section className="space-y-3 relative z-10">
-          <h2 className="text-[11px] font-bold uppercase tracking-wider text-zinc-400 px-1">
-            1. Selecione o Tipo de Estrutura
-          </h2>
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            {KINDS.map((item, idx) => {
-              const Icon = item.icon;
-              const active = flowKind === item.id;
-
-              return (
-                <button
-                  key={item.id}
-                  onClick={() => onFlowKind(item.id)}
-                  className={`group relative overflow-hidden rounded-[1.8rem] border p-6 text-left transition-all duration-300 hover:-translate-y-1 cursor-pointer flex flex-col justify-between shadow-md ${
-                    dark
-                      ? "border-white/10 bg-zinc-950/80 hover:border-white/20"
-                      : "border-zinc-200 bg-white hover:border-zinc-300"
-                  }`}
-                  style={{
-                    borderColor: active ? primaryColor : undefined,
-                  }}
-                >
-                  {/* Linhas decorativas simulando conexões de fluxograma no fundo */}
-                  <div className="absolute right-4 top-4 opacity-10 pointer-events-none flex items-center gap-1">
-                    {idx === 0 ? (
-                      <div className="flex items-center gap-1">
-                        <div className="w-6 h-0.5 bg-current" style={{ color: primaryColor }} />
-                        <div className="w-3 h-3 rounded-full border border-current" style={{ color: primaryColor }} />
-                        <div className="w-6 h-0.5 bg-current" style={{ color: primaryColor }} />
-                      </div>
-                    ) : (
-                      <span className="font-mono text-xs font-bold" style={{ color: primaryColor }}>{`{ }`}</span>
-                    )}
-                  </div>
-
-                  {active && (
+                return (
+                  <div
+                    key={topic.id}
+                    onClick={() => onOpenTopic(topic.id)}
+                    className={`group relative overflow-hidden cursor-pointer rounded-[1.8rem] border p-5 transition-all duration-300 hover:-translate-y-1 hover:shadow-xl flex flex-col justify-between min-h-[176px] ${
+                      dark
+                        ? "border-white/10 bg-zinc-950/90 hover:border-white/25"
+                        : "border-zinc-200/90 bg-white hover:border-zinc-300 shadow-md shadow-zinc-200/40"
+                    }`}
+                  >
+                    {/* Glow sutil no hover */}
                     <div
-                      className="absolute -right-8 -bottom-8 h-32 w-32 rounded-full opacity-25 blur-2xl pointer-events-none"
+                      className="pointer-events-none absolute -right-10 -bottom-10 h-32 w-32 rounded-full opacity-0 blur-2xl transition-opacity duration-300 group-hover:opacity-20"
                       style={{ background: primaryFill }}
                     />
-                  )}
 
-                  <div className="flex items-start justify-between z-10">
-                    <div className="flex items-center gap-3">
-                      <div
-                        className="flex h-12 w-12 items-center justify-center rounded-2xl shadow-sm transition-transform group-hover:scale-105"
-                        style={{
-                          background: active ? primaryFill : withAlpha(primaryColor, dark ? 0.15 : 0.1),
-                          color: active ? safeIconColor : primaryColor,
-                        }}
-                      >
-                        <Icon size={22} />
-                      </div>
-                      <div>
-                        <span
-                          className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-md"
+                    {/* Mini diagrama decorativo no canto superior direito */}
+                    <svg
+                      aria-hidden="true"
+                      viewBox="0 0 80 40"
+                      className="pointer-events-none absolute right-4 top-4 h-8 w-16 opacity-[0.12] group-hover:opacity-[0.22] transition-opacity"
+                    >
+                      {flowKind === "code" ? (
+                        <>
+                          <rect
+                            x="6"
+                            y="6"
+                            width="28"
+                            height="6"
+                            rx="3"
+                            fill={primaryColor}
+                          />
+                          <rect
+                            x="14"
+                            y="17"
+                            width="44"
+                            height="6"
+                            rx="3"
+                            fill={primaryColor}
+                          />
+                          <rect
+                            x="14"
+                            y="28"
+                            width="32"
+                            height="6"
+                            rx="3"
+                            fill={primaryColor}
+                          />
+                        </>
+                      ) : (
+                        <>
+                          <path
+                            d="M18 20 H42 M42 20 L58 10 M42 20 L58 30"
+                            stroke={primaryColor}
+                            strokeWidth="2"
+                            fill="none"
+                          />
+                          <circle cx="14" cy="20" r="5" fill={primaryColor} />
+                          <circle cx="62" cy="10" r="4" fill={primaryColor} />
+                          <circle cx="62" cy="30" r="4" fill={primaryColor} />
+                        </>
+                      )}
+                    </svg>
+
+                    {/* Topo: Ícone + Título + Ações rápidas */}
+                    <div className="relative z-10 flex items-start justify-between gap-3">
+                      <div className="flex items-start gap-3.5 min-w-0">
+                        <div
+                          className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl shadow-xs transition-transform duration-300 group-hover:scale-105"
                           style={{
-                            backgroundColor: withAlpha(primaryColor, 0.1),
+                            backgroundColor: withAlpha(
+                              primaryColor,
+                              dark ? 0.16 : 0.12
+                            ),
                             color: primaryColor,
                           }}
                         >
-                          {item.badge}
-                        </span>
-                      </div>
-                    </div>
+                          {flowKind === "code" ? (
+                            <Code2 size={20} />
+                          ) : (
+                            <GitFork size={20} />
+                          )}
+                        </div>
 
-                    {active && (
+                        <div className="min-w-0 pt-0.5">
+                          <h3
+                            className={`truncate text-base font-extrabold tracking-tight ${titleColor}`}
+                          >
+                            {topic.name}
+                          </h3>
+
+                          {folder ? (
+                            <span
+                              className="mt-1 inline-flex items-center gap-1.5 rounded-md px-2 py-0.5 text-[10px] font-bold"
+                              style={{
+                                backgroundColor: withAlpha(folderColor, 0.14),
+                                color: folderColor,
+                              }}
+                            >
+                              <span
+                                className="h-1.5 w-1.5 rounded-full"
+                                style={{ backgroundColor: folderColor }}
+                              />
+                              <span className="truncate max-w-[130px]">
+                                {folder.name}
+                              </span>
+                            </span>
+                          ) : (
+                            <span className="mt-1 block text-[11px] font-medium text-zinc-400">
+                              Sem pasta
+                            </span>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Toolbar flutuante de ações no hover */}
                       <div
-                        className="flex h-7 w-7 items-center justify-center rounded-full shadow-xs"
-                        style={{ background: withAlpha(primaryColor, 0.2), color: primaryColor }}
+                        className={`flex items-center gap-0.5 rounded-xl border p-1 opacity-0 transition-all duration-200 group-hover:opacity-100 shrink-0 backdrop-blur-md ${
+                          dark
+                            ? "border-white/10 bg-zinc-900/95"
+                            : "border-zinc-200 bg-white/95 shadow-sm"
+                        }`}
                       >
-                        <CheckCircle2 size={16} />
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onEditTopic(topic);
+                          }}
+                          title="Editar"
+                          className="rounded-lg p-1.5 text-zinc-400 hover:bg-zinc-500/15 hover:text-zinc-100 cursor-pointer"
+                        >
+                          <Pencil size={13} />
+                        </button>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onDuplicateTopic(topic);
+                          }}
+                          title="Duplicar"
+                          className="rounded-lg p-1.5 text-zinc-400 hover:bg-zinc-500/15 hover:text-zinc-100 cursor-pointer"
+                        >
+                          <Copy size={13} />
+                        </button>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onDeleteTopic(topic);
+                          }}
+                          title="Excluir"
+                          className="rounded-lg p-1.5 text-zinc-400 hover:bg-red-500/20 hover:text-red-400 cursor-pointer"
+                        >
+                          <Trash2 size={13} />
+                        </button>
                       </div>
-                    )}
-                  </div>
+                    </div>
 
-                  <div className="z-10 space-y-1 mt-5">
-                    <h3 className={`text-base font-extrabold ${titleColor}`}>
-                      {item.title}
-                    </h3>
-                    <p className="text-xs text-zinc-400 leading-relaxed">
-                      {item.text}
-                    </p>
-                  </div>
-                </button>
-              );
-            })}
-          </div>
-        </section>
-
-        {/* 2. PASTAS */}
-        <section className="space-y-3 relative z-10">
-          <div className="flex items-center justify-between px-1">
-            <h2 className="text-[11px] font-bold uppercase tracking-wider text-zinc-400">
-              2. Filtre por Pasta
-            </h2>
-          </div>
-
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
-            {/* Todas as Pastas */}
-            <button
-              onClick={() => onSelectFolder(null)}
-              className={`group relative overflow-hidden flex items-center gap-3.5 rounded-2xl border p-4 text-left transition-all duration-300 hover:-translate-y-0.5 cursor-pointer shadow-sm ${
-                dark
-                  ? "border-white/10 bg-zinc-950/80 hover:border-white/20"
-                  : "border-zinc-200 bg-white hover:border-zinc-300"
-              }`}
-              style={{
-                borderColor: !activeFolderId ? primaryColor : undefined,
-              }}
-            >
-              <div
-                className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl shadow-xs transition-transform group-hover:scale-105"
-                style={{
-                  background: !activeFolderId ? primaryFill : withAlpha(primaryColor, dark ? 0.15 : 0.1),
-                  color: !activeFolderId ? safeIconColor : primaryColor,
-                }}
-              >
-                <FolderIcon size={18} />
-              </div>
-
-              <div className="min-w-0 flex-1">
-                <span className={`block truncate text-xs font-bold ${titleColor}`}>
-                  Todas as pastas
-                </span>
-                <span className="text-[11px] text-zinc-400">
-                  {kindTopics.length} {kindTopics.length === 1 ? "item" : "itens"}
-                </span>
-              </div>
-            </button>
-
-            {/* Pastas Existentes */}
-            {folders.map((folder) => {
-              const active = activeFolderId === folder.id;
-              const count = kindTopics.filter((t) => t.folderId === folder.id).length;
-
-              return (
-                <div key={folder.id} className="group relative">
-                  <button
-                    onClick={() => onSelectFolder(folder.id)}
-                    className={`flex w-full items-center gap-3.5 rounded-2xl border p-4 text-left transition-all duration-300 hover:-translate-y-0.5 cursor-pointer shadow-sm ${
-                      dark
-                        ? "border-white/10 bg-zinc-950/80 hover:border-white/20"
-                        : "border-zinc-200 bg-white hover:border-zinc-300"
-                    }`}
-                    style={{
-                      borderColor: active ? primaryColor : undefined,
-                    }}
-                  >
+                    {/* Rodapé: Métricas, Prazo, Link e Seta de abertura */}
                     <div
-                      className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl shadow-xs transition-transform group-hover:scale-105"
-                      style={{
-                        background: active ? primaryFill : withAlpha(primaryColor, dark ? 0.15 : 0.1),
-                        color: active ? safeIconColor : primaryColor,
-                      }}
-                    >
-                      <FolderIcon size={18} />
-                    </div>
-
-                    <div className="min-w-0 flex-1 pr-12">
-                      <span className={`block truncate text-xs font-bold ${titleColor}`}>
-                        {folder.name}
-                      </span>
-                      <span className="text-[11px] text-zinc-400">
-                        {count} {count === 1 ? "item" : "itens"}
-                      </span>
-                    </div>
-                  </button>
-
-                  {/* Ações da Pasta */}
-                  <div className="absolute right-3 top-1/2 -translate-y-1/2 hidden items-center gap-1 opacity-0 transition-all group-hover:opacity-100 group-hover:flex z-10">
-                    <button
-                      onClick={() => onEditFolder(folder)}
-                      title="Editar pasta"
-                      className={`rounded-xl p-1.5 backdrop-blur-md transition-all cursor-pointer ${
-                        dark
-                          ? "bg-zinc-900/90 text-zinc-300 hover:text-white border border-white/10"
-                          : "bg-white/90 text-zinc-600 hover:text-zinc-900 shadow-sm border border-zinc-200"
+                      className={`relative z-10 mt-5 flex items-center justify-between gap-2 border-t pt-3.5 text-[11px] font-semibold ${
+                        dark ? "border-white/10" : "border-zinc-100"
                       }`}
                     >
-                      <Pencil size={13} />
-                    </button>
+                      <div className="flex flex-wrap items-center gap-1.5 min-w-0">
+                        <span
+                          className="rounded-lg px-2.5 py-1 font-bold"
+                          style={{
+                            backgroundColor: withAlpha(primaryColor, 0.12),
+                            color: primaryColor,
+                          }}
+                        >
+                          {flowKind === "code"
+                            ? `${codeCount} ${
+                                codeCount === 1 ? "arquivo" : "arquivos"
+                              }`
+                            : `${nodesCount} ${
+                                nodesCount === 1 ? "bloco" : "blocos"
+                              }${edgesCount > 0 ? ` • ${edgesCount} conexões` : ""}`}
+                        </span>
 
-                    <button
-                      onClick={() => onDeleteFolder(folder)}
-                      title="Excluir pasta"
-                      className={`rounded-xl p-1.5 backdrop-blur-md transition-all cursor-pointer ${
-                        dark
-                          ? "bg-zinc-900/90 text-red-400 hover:bg-red-500/20 border border-white/10"
-                          : "bg-white/90 text-red-600 hover:bg-red-50 shadow-sm border border-zinc-200"
-                      }`}
-                    >
-                      <Trash2 size={13} />
-                    </button>
+                        {topic.dueDate && (
+                          <span
+                            className={`inline-flex items-center gap-1 rounded-lg border px-2 py-1 ${
+                              dark
+                                ? "border-white/10 bg-white/[0.03] text-zinc-300"
+                                : "border-zinc-200 bg-zinc-50 text-zinc-600"
+                            }`}
+                          >
+                            <CalendarDays size={11} />
+                            {topic.dueDate.split("-").reverse().join("/")}
+                          </span>
+                        )}
+
+                        {topic.link && (
+                          <a
+                            href={topic.link}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            onClick={(e) => e.stopPropagation()}
+                            className={`inline-flex items-center gap-1 rounded-lg border px-2 py-1 transition-colors ${
+                              dark
+                                ? "border-white/10 bg-white/[0.03] text-zinc-300 hover:border-white/25"
+                                : "border-zinc-200 bg-zinc-50 text-zinc-600 hover:border-zinc-300"
+                            }`}
+                          >
+                            <Link2 size={11} />
+                            <span className="truncate max-w-[90px]">
+                              {linkLabel(topic.link)}
+                            </span>
+                          </a>
+                        )}
+                      </div>
+
+                      <span
+                        className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5"
+                        style={{ color: primaryColor }}
+                      >
+                        <ArrowUpRight size={15} />
+                      </span>
+                    </div>
                   </div>
-                </div>
-              );
-            })}
+                );
+              })}
 
-            {/* Criar Pasta */}
-            <button
-              onClick={onCreateFolder}
-              className={`flex h-full min-h-[58px] items-center justify-center gap-2.5 rounded-2xl border border-dashed text-xs font-bold transition-all duration-300 cursor-pointer ${
-                dark
-                  ? "border-white/15 text-zinc-400 hover:border-white/30 hover:text-zinc-200 hover:bg-white/2"
-                  : "border-zinc-300 text-zinc-500 hover:border-zinc-400 hover:text-zinc-900 hover:bg-zinc-50"
-              }`}
-            >
-              <FolderPlus size={16} />
-              Nova pasta
-            </button>
-          </div>
-        </section>
-
-        {/* 3. LISTA DE FLUXOGRAMAS / PROJETOS */}
-        <section className="space-y-4 relative z-10">
-          <div className="flex items-center justify-between px-1">
-            <div className="flex items-center gap-2">
-              <h2 className="text-[11px] font-bold uppercase tracking-wider text-zinc-400">
-                3. Projetos
-              </h2>
-              <span className={`text-xs font-medium ${subtitleColor}`}>
-                • {activeFolder ? activeFolder.name : "Todos"} ({visible.length})
-              </span>
-            </div>
-
-            <button
-              onClick={onCreateTopic}
-              className={ui.btnPrimaryMd}
-            >
-              <Plus size={15} />
-              Novo Fluxograma
-            </button>
-          </div>
-
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
-            {visible.map((topic) => {
-              const folder = folders.find((f) => f.id === topic.folderId);
-              const codeCount = topic.nodes.filter((n) => n.type === "code").length;
-
-              return (
+              {/* Card de Ação Rápida para Novo Projeto */}
+              <button
+                onClick={onCreateTopic}
+                className={`group flex min-h-[176px] flex-col items-center justify-center gap-3 rounded-[1.8rem] border border-dashed p-5 transition-all duration-300 cursor-pointer ${
+                  dark
+                    ? "border-white/15 text-zinc-400 hover:border-white/30 hover:text-zinc-100 hover:bg-white/[0.02]"
+                    : "border-zinc-300 text-zinc-500 hover:border-zinc-400 hover:text-zinc-900 hover:bg-zinc-50/80"
+                }`}
+              >
                 <div
-                  key={topic.id}
-                  onClick={() => onOpenTopic(topic.id)}
-                  className={`group relative cursor-pointer rounded-[1.8rem] border p-5 transition-all duration-300 hover:-translate-y-1 hover:shadow-xl flex flex-col justify-between ${
-                    dark
-                      ? "border-white/10 bg-zinc-950/80 hover:border-white/20"
-                      : "border-zinc-200 bg-white hover:border-zinc-300 shadow-md"
-                  }`}
+                  className="flex h-11 w-11 items-center justify-center rounded-2xl border border-dashed transition-transform group-hover:scale-110"
+                  style={{
+                    borderColor: primaryColor,
+                    backgroundColor: withAlpha(primaryColor, 0.08),
+                    color: primaryColor,
+                  }}
                 >
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="flex items-center gap-3 min-w-0">
+                  <Plus size={20} />
+                </div>
+                <span className="text-xs font-extrabold">
+                  {flowKind === "code"
+                    ? "Criar novo projeto"
+                    : "Criar novo fluxograma"}
+                </span>
+              </button>
+            </div>
+          ) : (
+            /* VISUALIZAÇÃO EM LISTA COMPACTA E EXECUTIVA */
+            <div className="space-y-2.5">
+              {visibleTopics.map((topic) => {
+                const folder = folders.find((f) => f.id === topic.folderId);
+                const folderColor = folder
+                  ? getResolvedFolderColor(folder.color)
+                  : primaryColor;
+                const nodesCount = topic.nodes?.length || 0;
+                const codeCount =
+                  topic.nodes?.filter((n) => n.type === "code").length || 0;
+
+                return (
+                  <div
+                    key={topic.id}
+                    onClick={() => onOpenTopic(topic.id)}
+                    className={`group flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-2xl border p-4 cursor-pointer transition-all ${
+                      dark
+                        ? "border-white/10 bg-zinc-950/85 hover:border-white/25 hover:bg-white/[0.03]"
+                        : "border-zinc-200 bg-white hover:border-zinc-300 shadow-xs"
+                    }`}
+                  >
+                    <div className="flex items-center gap-3.5 min-w-0">
                       <div
-                        className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl shadow-xs transition-transform group-hover:scale-105"
+                        className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl"
                         style={{
-                          background: withAlpha(primaryColor, dark ? 0.15 : 0.1),
+                          backgroundColor: withAlpha(primaryColor, 0.14),
                           color: primaryColor,
                         }}
                       >
-                        {flowKind === "code" ? <Code2 size={19} /> : <GitFork size={19} />}
+                        {flowKind === "code" ? (
+                          <Code2 size={18} />
+                        ) : (
+                          <GitFork size={18} />
+                        )}
                       </div>
+
                       <div className="min-w-0">
                         <p className={`truncate text-sm font-extrabold ${titleColor}`}>
                           {topic.name}
                         </p>
-                        {folder && (
-                          <span className="block truncate text-[11px] font-medium text-zinc-400 mt-0.5">
-                            {folder.name}
+                        <div className="flex flex-wrap items-center gap-2 mt-0.5 text-[11px] text-zinc-400">
+                          {folder && (
+                            <span
+                              className="inline-flex items-center gap-1 font-bold"
+                              style={{ color: folderColor }}
+                            >
+                              <span
+                                className="h-1.5 w-1.5 rounded-full"
+                                style={{ backgroundColor: folderColor }}
+                              />
+                              {folder.name}
+                            </span>
+                          )}
+                          <span>•</span>
+                          <span>
+                            {flowKind === "code"
+                              ? `${codeCount} ${
+                                  codeCount === 1 ? "arquivo" : "arquivos"
+                                }`
+                              : `${nodesCount} ${
+                                  nodesCount === 1 ? "bloco" : "blocos"
+                                }`}
                           </span>
-                        )}
+                        </div>
                       </div>
                     </div>
 
-                    <div className="flex items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100 shrink-0">
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          onEditTopic(topic);
-                        }}
-                        title="Editar fluxograma"
-                        className="rounded-xl p-1.5 text-zinc-400 hover:bg-zinc-500/15 hover:text-zinc-100 cursor-pointer"
-                      >
-                        <Pencil size={14} />
-                      </button>
+                    <div className="flex items-center justify-between sm:justify-end gap-2 shrink-0">
+                      {topic.dueDate && (
+                        <span
+                          className={`inline-flex items-center gap-1 rounded-lg border px-2.5 py-1 text-[11px] font-semibold ${
+                            dark
+                              ? "border-white/10 bg-white/[0.03] text-zinc-300"
+                              : "border-zinc-200 bg-zinc-50 text-zinc-600"
+                          }`}
+                        >
+                          <CalendarDays size={11} />
+                          {topic.dueDate.split("-").reverse().join("/")}
+                        </span>
+                      )}
 
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          onDuplicateTopic(topic);
-                        }}
-                        title="Duplicar fluxograma"
-                        className="rounded-xl p-1.5 text-zinc-400 hover:bg-zinc-500/15 hover:text-zinc-100 cursor-pointer"
-                      >
-                        <Copy size={14} />
-                      </button>
+                      {topic.link && (
+                        <a
+                          href={topic.link}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          onClick={(e) => e.stopPropagation()}
+                          className={`inline-flex items-center gap-1 rounded-lg border px-2.5 py-1 text-[11px] font-semibold ${
+                            dark
+                              ? "border-white/10 bg-white/[0.03] text-zinc-300 hover:border-white/25"
+                              : "border-zinc-200 bg-zinc-50 text-zinc-600 hover:border-zinc-300"
+                          }`}
+                        >
+                          <Link2 size={11} />
+                          {linkLabel(topic.link)}
+                        </a>
+                      )}
 
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          onDeleteTopic(topic);
-                        }}
-                        title="Excluir fluxograma"
-                        className="rounded-xl p-1.5 text-zinc-400 hover:bg-red-500/20 hover:text-red-400 cursor-pointer"
-                      >
-                        <Trash2 size={14} />
-                      </button>
+                      <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onEditTopic(topic);
+                          }}
+                          title="Editar"
+                          className="rounded-lg p-1.5 text-zinc-400 hover:bg-zinc-500/15 hover:text-zinc-100 cursor-pointer"
+                        >
+                          <Pencil size={13} />
+                        </button>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onDuplicateTopic(topic);
+                          }}
+                          title="Duplicar"
+                          className="rounded-lg p-1.5 text-zinc-400 hover:bg-zinc-500/15 hover:text-zinc-100 cursor-pointer"
+                        >
+                          <Copy size={13} />
+                        </button>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onDeleteTopic(topic);
+                          }}
+                          title="Excluir"
+                          className="rounded-lg p-1.5 text-zinc-400 hover:bg-red-500/20 hover:text-red-400 cursor-pointer"
+                        >
+                          <Trash2 size={13} />
+                        </button>
+                      </div>
+
+                      <ArrowUpRight size={15} style={{ color: primaryColor }} />
                     </div>
                   </div>
-
-                  <div className={`mt-5 flex flex-wrap items-center gap-2 border-t pt-3.5 text-[11px] font-medium text-zinc-400 ${
-                    dark ? "border-white/10" : "border-zinc-100"
-                  }`}>
-                    <span
-                      className="rounded-xl border px-2.5 py-1 font-semibold"
-                      style={{
-                        borderColor: withAlpha(primaryColor, 0.25),
-                        backgroundColor: withAlpha(primaryColor, 0.08),
-                        color: primaryColor,
-                      }}
-                    >
-                      {flowKind === "code"
-                        ? `${codeCount} ${codeCount === 1 ? "arquivo" : "arquivos"}`
-                        : `${topic.nodes.length} ${topic.nodes.length === 1 ? "bloco" : "blocos"}`}
-                    </span>
-
-                    {topic.dueDate && (
-                      <span className={`flex items-center gap-1.5 rounded-xl border px-2.5 py-1 ${
-                        dark ? "border-white/10 bg-white/3 text-zinc-300" : "border-zinc-200 bg-zinc-50 text-zinc-600"
-                      }`}>
-                        <CalendarDays size={12} />
-                        {topic.dueDate.split("-").reverse().join("/")}
-                      </span>
-                    )}
-
-                    {topic.link && (
-                      <span className={`flex items-center gap-1.5 rounded-xl border px-2.5 py-1 ${
-                        dark ? "border-white/10 bg-white/3 text-zinc-300" : "border-zinc-200 bg-zinc-50 text-zinc-600"
-                      }`}>
-                        <Link2 size={12} />
-                        {linkLabel(topic.link)}
-                      </span>
-                    )}
-                  </div>
-                </div>
-              );
-            })}
-
-            {/* Card para Criar Novo Fluxograma rápido */}
-            <button
-              onClick={onCreateTopic}
-              className={`flex min-h-[145px] flex-col items-center justify-center gap-3 rounded-[1.8rem] border border-dashed p-5 transition-all duration-300 cursor-pointer ${
-                dark
-                  ? "border-white/15 text-zinc-400 hover:border-white/30 hover:text-zinc-200 hover:bg-white/2"
-                  : "border-zinc-300 text-zinc-500 hover:border-zinc-400 hover:text-zinc-900 hover:bg-zinc-50"
-              }`}
-            >
-              <div
-                className="flex h-10 w-10 items-center justify-center rounded-2xl border border-dashed"
-                style={{ borderColor: primaryColor, color: primaryColor }}
-              >
-                <Plus size={18} />
-              </div>
-              <span className="text-xs font-bold">Criar novo fluxograma</span>
-            </button>
-          </div>
+                );
+              })}
+            </div>
+          )}
         </section>
-
       </div>
     </div>
   );
